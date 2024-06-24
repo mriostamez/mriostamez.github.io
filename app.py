@@ -28,4 +28,4 @@ async def receive_data(data: DataModel):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="https://humble-barnacle-pjrrvr59w9x27px9.github.dev", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
