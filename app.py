@@ -12,7 +12,7 @@ async def receive_data(data: DataModel):
     response = {
         'status': 'success',
         'message': 'Data received successfully',
-        'received_data': data.dict()
+        'received_data': data.model_dump()
     }
     return response
 
