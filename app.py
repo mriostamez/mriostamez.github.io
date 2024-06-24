@@ -26,6 +26,10 @@ async def receive_data(data: DataModel):
     }
     return response
 
+@app.get("/")
+def read_root():
+    return {"message": "FastAPI, only authorized users allowed."}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
