@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A sequential multi-timer web app with customizable sequences, bell notifications, and saved presets.">
+    <title>Sequence Timer — Multi-Timer Sequencer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <header class="app__header">
+            <h1 class="app__title">Sequence Timer</h1>
+            <p class="app__subtitle">Sequential multi-timer with bell alerts</p>
+        </header>
+
+        <main class="app__main">
+            <!-- Current Timer Display -->
+            <section class="display" aria-label="Timer display">
+                <div class="display__sequence-dots" id="sequenceDots"></div>
+                <div class="display__timer" id="timerDisplay">00:00:00</div>
+                <div class="display__progress">
+                    <div class="display__progress-bar" id="progressBar"></div>
+                </div>
+                <div class="display__info" id="timerInfo">Ready</div>
+            </section>
+
+            <!-- Controls -->
+            <section class="controls" aria-label="Timer controls">
+                <button class="controls__btn controls__btn--start" id="btnStart" type="button">
+                    <span class="controls__btn-icon">▶</span> Start
+                </button>
+                <button class="controls__btn controls__btn--cancel" id="btnCancel" type="button" disabled>
+                    <span class="controls__btn-icon">■</span> Cancel All
+                </button>
+                <button class="controls__btn controls__btn--reset" id="btnReset" type="button">
+                    <span class="controls__btn-icon">↺</span> Cancel &amp; Reset
+                </button>
+            </section>
+
+            <!-- Timer List -->
+            <section class="timers" aria-label="Timer sequence list">
+                <div class="timers__header">
+                    <h2 class="timers__title">Timer Sequence</h2>
+                    <button class="timers__add-btn" id="btnAddTimer" type="button">+ Add Timer</button>
+                </div>
+                <div class="timers__list" id="timerList"></div>
+                <p class="timers__hint" id="timerHint">Add up to 10 timers. They will run one after another.</p>
+            </section>
+
+            <!-- Saved Sequences -->
+            <section class="sequences" aria-label="Saved sequences">
+                <h2 class="sequences__title">Saved Sequences</h2>
+                <div class="sequences__save">
+                    <input type="text" id="sequenceNameInput" class="sequences__input" placeholder="Enter sequence name..." maxlength="40" aria-label="Sequence name">
+                    <button class="sequences__save-btn" id="btnSaveSequence" type="button">Save</button>
+                </div>
+                <div class="sequences__list" id="sequenceList"></div>
+                <p class="sequences__empty" id="sequencesEmpty">No saved sequences yet.</p>
+            </section>
+        </main>
+
+        <footer class="app__footer">
+            <p>Sequence Timer &copy; 2026</p>
+        </footer>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
