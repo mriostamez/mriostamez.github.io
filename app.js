@@ -5,6 +5,7 @@ const STORAGE_KEY = 'sequenceTimerSavedSequences';
 /* ===== State & DOM (initialized on DOMContentLoaded) ===== */
 let state;
 let dom;
+let globalAudioCtx = null;
 
 /* ===== Initialization ===== */
 document.addEventListener('DOMContentLoaded', () => {
@@ -40,6 +41,15 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSavedSequences();
     render();
     bindEvents();
+
+    // One-time gesture listener to unlock Web Audio API on mobile (iOS/Android) browser autoplay policies
+    const unlock = () => {
+        unlockAudio();
+        document.removeEventListener('click', unlock);
+        document.removeEventListener('touchstart', unlock);
+    };
+    document.addEventListener('click', unlock, { passive: true });
+    document.addEventListener('touchstart', unlock, { passive: true });
 });
 
 /* ===== Event Binding ===== */
@@ -532,22 +542,41 @@ function deleteSequence(index) {
     renderSequences();
 }
 
-/* ===== Audio (Web Audio API Bell Chime) ===== */
-function playBellSound() {
-    let audioCtx;
-    try {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch {
+/* ===== Audio (Web Audio API Bell Chime with Mobile Autoplay Unlock) ===== */
+function unlockAudio() {
+    if (globalAudioCtx) {
+        if (globalAudioCtx.state === 'suspended') {
+            globalAudioCtx.resume();
+        }
         return;
     }
 
+    try {
+        globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Play an instantaneous silent buffer to warm up mobile hardware context
+        const buffer = globalAudioCtx.createBuffer(1, 1, 22050);
+        const source = globalAudioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(globalAudioCtx.destination);
+        source.start(0);
+    } catch (e) {
+        console.warn('Audio Context initialization failed:', e);
+    }
+}
+
+function playBellSound() {
+    // Ensure Context is fully initialized and resumed
+    unlockAudio();
+    if (!globalAudioCtx) return;
+
     /* Bell chord: C5, E5, G5 */
     const frequencies = [523.25, 659.25, 783.99];
-    const now = audioCtx.currentTime;
+    const now = globalAudioCtx.currentTime;
 
     frequencies.forEach((freq, i) => {
-        const oscillator = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+        const oscillator = globalAudioCtx.createOscillator();
+        const gain = globalAudioCtx.createGain();
 
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(freq, now);
@@ -556,14 +585,11 @@ function playBellSound() {
         gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
 
         oscillator.connect(gain);
-        gain.connect(audioCtx.destination);
+        gain.connect(globalAudioCtx.destination);
 
         oscillator.start(now + i * 0.04);
         oscillator.stop(now + 2);
     });
-
-    /* Cleanup */
-    setTimeout(() => audioCtx.close(), 2500);
 }
 
 /* ===== Utilities ===== */
