@@ -19,14 +19,14 @@
         </header>
 
         <main class="app__main">
-            <!-- Current Timer Display -->
-            <section class="display" aria-label="Timer display">
-                <div class="display__sequence-dots" id="sequenceDots"></div>
-                <div class="display__timer" id="timerDisplay">00:00:00</div>
-                <div class="display__progress">
-                    <div class="display__progress-bar" id="progressBar"></div>
+            <!-- Timer List -->
+            <section class="timers" aria-label="Timer sequence list">
+                <div class="timers__header">
+                    <h2 class="timers__title">Timer Sequence</h2>
+                    <button class="timers__add-btn" id="btnAddTimer" type="button">+ Add Timer</button>
                 </div>
-                <div class="display__info" id="timerInfo">Ready</div>
+                <div class="timers__list" id="timerList"></div>
+                <p class="timers__hint" id="timerHint">Add up to 10 timers. They will run one after another.</p>
             </section>
 
             <!-- Controls -->
@@ -42,14 +42,14 @@
                 </button>
             </section>
 
-            <!-- Timer List -->
-            <section class="timers" aria-label="Timer sequence list">
-                <div class="timers__header">
-                    <h2 class="timers__title">Timer Sequence</h2>
-                    <button class="timers__add-btn" id="btnAddTimer" type="button">+ Add Timer</button>
+            <!-- Current Timer Display -->
+            <section class="display" aria-label="Timer display">
+                <div class="display__sequence-dots" id="sequenceDots"></div>
+                <div class="display__timer" id="timerDisplay">00:00:00</div>
+                <div class="display__progress">
+                    <div class="display__progress-bar" id="progressBar"></div>
                 </div>
-                <div class="timers__list" id="timerList"></div>
-                <p class="timers__hint" id="timerHint">Add up to 10 timers. They will run one after another.</p>
+                <div class="display__info" id="timerInfo">Ready</div>
             </section>
 
             <!-- Saved Sequences -->

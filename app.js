@@ -51,7 +51,6 @@ function bindEvents() {
     dom.btnSaveSequence.addEventListener('click', handleSaveSequence);
 
     /* Delegate events on the timer list */
-    dom.timerList.addEventListener('input', handleTimerInput);
     dom.timerList.addEventListener('click', handleTimerListClick);
 
     /* Delegate events on the sequence list */
@@ -92,28 +91,60 @@ function handleAddTimer() {
     render();
 }
 
-function handleTimerInput(event) {
-    const input = event.target;
-    if (!input.classList.contains('timer-item__input')) {
-        return;
-    }
-    const itemEl = input.closest('.timer-item');
-    const timerId = itemEl.dataset.id;
-    const field = input.dataset.field;
-    let value = parseInt(input.value, 10) || 0;
+function bindScrollPickerEvents(picker, timerId, field) {
+    const itemHeight = 34;
+    let scrollTimeout;
 
-    /* Clamp values */
-    if (field === 'hours') {
-        value = Math.max(0, Math.min(99, value));
-    } else {
-        value = Math.max(0, Math.min(59, value));
-    }
-    input.value = value;
+    const handleScrollUpdate = () => {
+        const items = picker.querySelectorAll('.scroll-picker__item');
+        const value = Math.max(0, Math.min(items.length - 1, Math.round(picker.scrollTop / itemHeight)));
+        const timer = state.timers.find((t) => t.id === timerId);
+        if (timer && timer[field] !== value) {
+            timer[field] = value;
+        }
 
-    const timer = state.timers.find((t) => t.id === timerId);
-    if (timer) {
-        timer[field] = value;
-    }
+        // Highlight selected item in UI
+        items.forEach((item, idx) => {
+            if (idx === value) {
+                item.classList.add('scroll-picker__item--selected');
+            } else {
+                item.classList.remove('scroll-picker__item--selected');
+            }
+        });
+    };
+
+    picker.addEventListener('scroll', () => {
+        // Instant visual feedback for scrolling
+        const items = picker.querySelectorAll('.scroll-picker__item');
+        const tempValue = Math.max(0, Math.min(items.length - 1, Math.round(picker.scrollTop / itemHeight)));
+        items.forEach((item, idx) => {
+            if (idx === tempValue) {
+                item.classList.add('scroll-picker__item--selected');
+            } else {
+                item.classList.remove('scroll-picker__item--selected');
+            }
+        });
+
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(handleScrollUpdate, 150);
+    });
+
+    picker.addEventListener('scrollend', () => {
+        clearTimeout(scrollTimeout);
+        handleScrollUpdate();
+    });
+
+    // Support smooth scroll to item on direct click
+    picker.addEventListener('click', (event) => {
+        if (state.isRunning) return;
+        const item = event.target.closest('.scroll-picker__item');
+        if (!item) return;
+        const val = parseInt(item.dataset.value, 10);
+        picker.scrollTo({
+            top: val * itemHeight,
+            behavior: 'smooth'
+        });
+    });
 }
 
 function handleTimerListClick(event) {
@@ -346,30 +377,61 @@ function renderTimerList() {
         const isDone = state.isRunning && index < state.currentIndex;
         const activeClass = isActive ? ' timer-item--active' : '';
         const doneClass = isDone ? ' timer-item--done' : '';
-        const disabled = state.isRunning ? 'disabled' : '';
+        const disabledClass = state.isRunning ? ' timer-item--disabled' : '';
         const canRemove = state.timers.length > 1 && !state.isRunning;
 
         return `
-            <div class="timer-item${activeClass}${doneClass}" data-id="${timer.id}">
+            <div class="timer-item${activeClass}${doneClass}${disabledClass}" data-id="${timer.id}">
                 <span class="timer-item__label">${index + 1}</span>
                 <div class="timer-item__time">
-                    <input type="number" class="timer-item__input" data-field="hours"
-                        min="0" max="99" value="${timer.hours}" ${disabled}
-                        aria-label="Hours for timer ${index + 1}">
+                    <div class="scroll-picker" data-field="hours" aria-label="Hours for timer ${index + 1}">
+                        <div class="scroll-picker__list">
+                            ${generatePickerOptions(0, 99, timer.hours)}
+                        </div>
+                    </div>
                     <span class="timer-item__separator">:</span>
-                    <input type="number" class="timer-item__input" data-field="minutes"
-                        min="0" max="59" value="${timer.minutes}" ${disabled}
-                        aria-label="Minutes for timer ${index + 1}">
+                    <div class="scroll-picker" data-field="minutes" aria-label="Minutes for timer ${index + 1}">
+                        <div class="scroll-picker__list">
+                            ${generatePickerOptions(0, 59, timer.minutes)}
+                        </div>
+                    </div>
                     <span class="timer-item__separator">:</span>
-                    <input type="number" class="timer-item__input" data-field="seconds"
-                        min="0" max="59" value="${timer.seconds}" ${disabled}
-                        aria-label="Seconds for timer ${index + 1}">
+                    <div class="scroll-picker" data-field="seconds" aria-label="Seconds for timer ${index + 1}">
+                        <div class="scroll-picker__list">
+                            ${generatePickerOptions(0, 59, timer.seconds)}
+                        </div>
+                    </div>
+                    <div class="timer-item__time-overlay"></div>
+                    <div class="timer-item__time-mask"></div>
                 </div>
                 <button class="timer-item__remove" type="button"
                     ${canRemove ? '' : 'disabled'}
                     aria-label="Remove timer ${index + 1}">&times;</button>
             </div>`;
     }).join('');
+
+    // After inserting the HTML, set the scroll offsets of all pickers programmatically and bind events
+    const timerItems = dom.timerList.querySelectorAll('.timer-item');
+    timerItems.forEach((itemEl) => {
+        const timerId = itemEl.dataset.id;
+        const timer = state.timers.find((t) => t.id === timerId);
+        if (!timer) return;
+
+        const pickers = itemEl.querySelectorAll('.scroll-picker');
+        pickers.forEach((picker) => {
+            const field = picker.dataset.field;
+            const value = timer[field];
+            const itemHeight = 34; // Must match CSS line-height
+
+            // Use requestAnimationFrame to ensure picker is fully laid out and scrollable
+            requestAnimationFrame(() => {
+                picker.scrollTop = value * itemHeight;
+            });
+
+            // Bind reactive scroll/click events
+            bindScrollPickerEvents(picker, timerId, field);
+        });
+    });
 }
 
 function renderSequenceDots() {
@@ -533,4 +595,14 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function generatePickerOptions(min, max, currentValue) {
+    let html = '';
+    for (let i = min; i <= max; i++) {
+        const valStr = String(i).padStart(2, '0');
+        const selectedClass = i === currentValue ? ' scroll-picker__item--selected' : '';
+        html += `<div class="scroll-picker__item${selectedClass}" data-value="${i}">${valStr}</div>`;
+    }
+    return html;
 }
