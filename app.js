@@ -35,12 +35,14 @@ document.addEventListener('DOMContentLoaded', () => {
         btnReset: document.getElementById('btnReset'),
         btnAddTimer: document.getElementById('btnAddTimer'),
         btnSaveSequence: document.getElementById('btnSaveSequence'),
+        btnTestSound: document.getElementById('btnTestSound'),
         display: document.querySelector('.display')
     };
 
     loadSavedSequences();
     render();
     bindEvents();
+    initAudioSystem();
 
     // One-time gesture listener to unlock Web Audio API on mobile (iOS/Android) browser autoplay policies
     const unlock = () => {
@@ -65,6 +67,8 @@ function bindEvents() {
 
     /* Delegate events on the sequence list */
     dom.sequenceList.addEventListener('click', handleSequenceListClick);
+
+    dom.btnTestSound.addEventListener('click', handleTestSound);
 
     /* Allow Enter key to save sequence */
     dom.sequenceNameInput.addEventListener('keydown', (event) => {
@@ -543,10 +547,45 @@ function deleteSequence(index) {
 }
 
 /* ===== Audio (Web Audio API Bell Chime with Mobile Autoplay Unlock) ===== */
+function initAudioSystem() {
+    renderBellChime((buffer) => {
+        if (!buffer) {
+            console.warn('Could not pre-render bell chime offline. Fallback to live synthesis.');
+            return;
+        }
+
+        // Normalize the buffer for maximum possible loudness without clipping
+        normalizeBuffer(buffer);
+
+        try {
+            const wavBlob = bufferToWav(buffer);
+            const wavUrl = URL.createObjectURL(wavBlob);
+            dom.bellAudio = new Audio(wavUrl);
+            dom.bellAudio.volume = 1.0;
+        } catch (e) {
+            console.error('Failed to create HTML5 Audio from pre-rendered buffer:', e);
+        }
+    });
+}
+
 function unlockAudio() {
+    // 1. Unlock HTML5 Audio if initialized
+    if (dom && dom.bellAudio) {
+        const playPromise = dom.bellAudio.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                dom.bellAudio.pause();
+                dom.bellAudio.currentTime = 0;
+            }).catch((err) => {
+                console.log('HTML5 Audio unlock attempt status:', err.message);
+            });
+        }
+    }
+
+    // 2. Unlock/Initialize Web Audio AudioContext
     if (globalAudioCtx) {
         if (globalAudioCtx.state === 'suspended') {
-            globalAudioCtx.resume();
+            globalAudioCtx.resume().catch((e) => console.warn('Context resume failed:', e));
         }
         return;
     }
@@ -566,30 +605,214 @@ function unlockAudio() {
 }
 
 function playBellSound() {
-    // Ensure Context is fully initialized and resumed
+    // Attempt HTML5 Audio first (much more stable inside background/timer threads on mobile)
+    if (dom.bellAudio) {
+        try {
+            dom.bellAudio.pause();
+            dom.bellAudio.currentTime = 0;
+            const playPromise = dom.bellAudio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch((err) => {
+                    console.warn('HTML5 Audio play failed, falling back to Web Audio API:', err);
+                    playBellLive();
+                });
+            }
+            return;
+        } catch (e) {
+            console.warn('HTML5 Audio play error, falling back to Web Audio API:', e);
+        }
+    }
+
+    playBellLive();
+}
+
+function playBellLive() {
     unlockAudio();
     if (!globalAudioCtx) return;
 
-    /* Bell chord: C5, E5, G5 */
-    const frequencies = [523.25, 659.25, 783.99];
     const now = globalAudioCtx.currentTime;
+    // C5 (523.25), E5 (659.25), G5 (783.99), and C6 (1046.5) for high clarity
+    const frequencies = [523.25, 659.25, 783.99, 1046.5];
+    const gains = [0.35, 0.25, 0.20, 0.15];
 
     frequencies.forEach((freq, i) => {
-        const oscillator = globalAudioCtx.createOscillator();
-        const gain = globalAudioCtx.createGain();
+        const osc = globalAudioCtx.createOscillator();
+        const gainNode = globalAudioCtx.createGain();
 
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(freq, now);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
 
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+        gainNode.gain.setValueAtTime(gains[i] * 0.8, now); // scale slightly to prevent clipping in sum
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
 
-        oscillator.connect(gain);
-        gain.connect(globalAudioCtx.destination);
+        osc.connect(gainNode);
+        gainNode.connect(globalAudioCtx.destination);
 
-        oscillator.start(now + i * 0.04);
-        oscillator.stop(now + 2);
+        osc.start(now);
+        osc.stop(now + 2.5);
     });
+
+    // Metallic transient strike
+    const strikeOsc = globalAudioCtx.createOscillator();
+    const strikeGain = globalAudioCtx.createGain();
+    strikeOsc.type = 'triangle';
+    strikeOsc.frequency.setValueAtTime(1500, now);
+    strikeGain.gain.setValueAtTime(0.12, now);
+    strikeGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+    strikeOsc.connect(strikeGain);
+    strikeGain.connect(globalAudioCtx.destination);
+    strikeOsc.start(now);
+    strikeOsc.stop(now + 0.1);
+}
+
+function handleTestSound() {
+    // Direct user click gesture is ideal context to unlock/resume both engines
+    unlockAudio();
+    playBellSound();
+
+    // Visual feedback for playing state
+    const originalHTML = dom.btnTestSound.innerHTML;
+    dom.btnTestSound.innerHTML = '<span class="controls__btn-icon">🔔</span> Playing...';
+    dom.btnTestSound.disabled = true;
+    setTimeout(() => {
+        dom.btnTestSound.innerHTML = originalHTML;
+        dom.btnTestSound.disabled = false;
+    }, 1500);
+}
+
+function renderBellChime(callback) {
+    const sampleRate = 44100;
+    const duration = 2.5;
+    let offlineCtx;
+    try {
+        offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, sampleRate * duration, sampleRate);
+    } catch (e) {
+        console.warn('OfflineAudioContext not supported:', e);
+        callback(null);
+        return;
+    }
+
+    const now = 0;
+    const frequencies = [523.25, 659.25, 783.99, 1046.5];
+    const gains = [0.35, 0.25, 0.20, 0.15];
+
+    frequencies.forEach((freq, idx) => {
+        const osc = offlineCtx.createOscillator();
+        const gainNode = offlineCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+
+        gainNode.gain.setValueAtTime(gains[idx], now);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, duration);
+
+        osc.connect(gainNode);
+        gainNode.connect(offlineCtx.destination);
+        osc.start(now);
+        osc.stop(duration);
+    });
+
+    // Triangle strike transient
+    const strikeOsc = offlineCtx.createOscillator();
+    const strikeGain = offlineCtx.createGain();
+    strikeOsc.type = 'triangle';
+    strikeOsc.frequency.setValueAtTime(1500, now);
+    strikeGain.gain.setValueAtTime(0.15, now);
+    strikeGain.gain.exponentialRampToValueAtTime(0.0001, 0.08);
+
+    strikeOsc.connect(strikeGain);
+    strikeGain.connect(offlineCtx.destination);
+    strikeOsc.start(now);
+    strikeOsc.stop(0.1);
+
+    offlineCtx.startRendering().then((renderedBuffer) => {
+        callback(renderedBuffer);
+    }).catch((err) => {
+        console.error('Offline rendering failed:', err);
+        callback(null);
+    });
+}
+
+function normalizeBuffer(buffer) {
+    const numOfChan = buffer.numberOfChannels;
+    let maxVal = 0;
+
+    // Find peak value
+    for (let c = 0; c < numOfChan; c++) {
+        const data = buffer.getChannelData(c);
+        for (let i = 0; i < data.length; i++) {
+            const absVal = Math.abs(data[i]);
+            if (absVal > maxVal) {
+                maxVal = absVal;
+            }
+        }
+    }
+
+    // Scale values to peak at 0.98 amplitude (loud and clean)
+    if (maxVal > 0) {
+        const scale = 0.98 / maxVal;
+        for (let c = 0; c < numOfChan; c++) {
+            const data = buffer.getChannelData(c);
+            for (let i = 0; i < data.length; i++) {
+                data[i] *= scale;
+            }
+        }
+    }
+}
+
+function bufferToWav(buffer) {
+    const numOfChan = buffer.numberOfChannels;
+    const length = buffer.length * numOfChan * 2 + 44;
+    const bufferArr = new ArrayBuffer(length);
+    const view = new DataView(bufferArr);
+    const channels = [];
+    let i;
+    let sample;
+    let offset = 0;
+    let pos = 0;
+
+    // RIFF WAV Header
+    setUint32(0x46464952); // "RIFF"
+    setUint32(length - 8); // chunk size
+    setUint32(0x45564157); // "WAVE"
+
+    setUint32(0x20746d66); // "fmt " subchunk
+    setUint32(16); // subchunk size
+    setUint16(1); // audio format (1 = PCM)
+    setUint16(numOfChan);
+    setUint32(buffer.sampleRate);
+    setUint32(buffer.sampleRate * numOfChan * 2); // byte rate
+    setUint16(numOfChan * 2); // block align
+    setUint16(16); // bits per sample
+
+    setUint32(0x61746164); // "data" subchunk
+    setUint32(length - pos - 4);
+
+    for (i = 0; i < buffer.numberOfChannels; i++) {
+        channels.push(buffer.getChannelData(i));
+    }
+
+    while (pos < length - 4) {
+        for (i = 0; i < numOfChan; i++) {
+            sample = Math.max(-1, Math.min(1, channels[i][offset]));
+            sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+            view.setInt16(pos, sample, true);
+            pos += 2;
+        }
+        offset++;
+    }
+
+    return new Blob([bufferArr], { type: 'audio/wav' });
+
+    function setUint16(data) {
+        view.setUint16(pos, data, true);
+        pos += 2;
+    }
+
+    function setUint32(data) {
+        view.setUint32(pos, data, true);
+        pos += 4;
+    }
 }
 
 /* ===== Utilities ===== */
