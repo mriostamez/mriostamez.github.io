@@ -6,6 +6,8 @@ const STORAGE_KEY = 'sequenceTimerSavedSequences';
 let state;
 let dom;
 let globalAudioCtx = null;
+let isHtml5AudioUnlocked = false;
+let isPlayingRealSound = false;
 
 /* ===== Initialization ===== */
 document.addEventListener('DOMContentLoaded', () => {
@@ -569,14 +571,18 @@ function initAudioSystem() {
 }
 
 function unlockAudio() {
-    // 1. Unlock HTML5 Audio if initialized
-    if (dom && dom.bellAudio) {
+    // 1. Unlock HTML5 Audio if initialized and not yet unlocked
+    if (dom && dom.bellAudio && !isHtml5AudioUnlocked) {
+        isHtml5AudioUnlocked = true;
         const playPromise = dom.bellAudio.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                dom.bellAudio.pause();
-                dom.bellAudio.currentTime = 0;
+                if (!isPlayingRealSound) {
+                    dom.bellAudio.pause();
+                    dom.bellAudio.currentTime = 0;
+                }
             }).catch((err) => {
+                isHtml5AudioUnlocked = false;
                 console.log('HTML5 Audio unlock attempt status:', err.message);
             });
         }
@@ -605,6 +611,8 @@ function unlockAudio() {
 }
 
 function playBellSound() {
+    isPlayingRealSound = true;
+
     // Attempt HTML5 Audio first (much more stable inside background/timer threads on mobile)
     if (dom.bellAudio) {
         try {
@@ -612,13 +620,19 @@ function playBellSound() {
             dom.bellAudio.currentTime = 0;
             const playPromise = dom.bellAudio.play();
             if (playPromise !== undefined) {
-                playPromise.catch((err) => {
+                playPromise.then(() => {
+                    setTimeout(() => {
+                        isPlayingRealSound = false;
+                    }, 2500);
+                }).catch((err) => {
+                    isPlayingRealSound = false;
                     console.warn('HTML5 Audio play failed, falling back to Web Audio API:', err);
                     playBellLive();
                 });
             }
             return;
         } catch (e) {
+            isPlayingRealSound = false;
             console.warn('HTML5 Audio play error, falling back to Web Audio API:', e);
         }
     }
@@ -627,8 +641,12 @@ function playBellSound() {
 }
 
 function playBellLive() {
+    isPlayingRealSound = true;
     unlockAudio();
-    if (!globalAudioCtx) return;
+    if (!globalAudioCtx) {
+        isPlayingRealSound = false;
+        return;
+    }
 
     const now = globalAudioCtx.currentTime;
     // C5 (523.25), E5 (659.25), G5 (783.99), and C6 (1046.5) for high clarity
@@ -664,11 +682,14 @@ function playBellLive() {
     strikeGain.connect(globalAudioCtx.destination);
     strikeOsc.start(now);
     strikeOsc.stop(now + 0.1);
+
+    setTimeout(() => {
+        isPlayingRealSound = false;
+    }, 2500);
 }
 
 function handleTestSound() {
-    // Direct user click gesture is ideal context to unlock/resume both engines
-    unlockAudio();
+    // Play sound directly, which naturally handles unlocking
     playBellSound();
 
     // Visual feedback for playing state
