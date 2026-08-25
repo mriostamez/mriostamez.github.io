@@ -77,7 +77,7 @@
     }
 
     header.hero h1 {
-      font-family: var(--display);
+      font-family: var(--mono);
       font-weight: 700;
       font-size: clamp(28px, 4vw, 42px);
       margin: 0 0 8px;
@@ -483,7 +483,8 @@
   <div class="wrap">
 
     <header class="hero">
-      <div class="eyebrow">Daily calorie &amp; macro tracker</div>
+      <div class="eyebrow">MANUEL RIOS TAMEZ</div>
+      <h1 id="heroTitle">Daily calorie &amp; macro tracker</h1>
       <div class="today-strip" id="todayStrip"></div>
     </header>
 
@@ -1115,6 +1116,11 @@
           return Math.round(vals.reduce((a, b) => a + Number(b), 0) / vals.length);
         }
         const carbAvg = avg('carbs'), fatAvg = avg('fat'), proteinAvg = avg('protein');
+        const totalAvgGrams = carbAvg + fatAvg + proteinAvg;
+
+        const carbPct = totalAvgGrams ? Math.round((carbAvg / totalAvgGrams) * 100) : 0;
+        const fatPct = totalAvgGrams ? Math.round((fatAvg / totalAvgGrams) * 100) : 0;
+        const proteinPct = totalAvgGrams ? Math.round((proteinAvg / totalAvgGrams) * 100) : 0;
 
         const ctx2 = document.getElementById('macroChart').getContext('2d');
         if (macroChart) macroChart.destroy();
@@ -1122,12 +1128,86 @@
           type: 'doughnut',
           data: {
             labels: ['Carbs', 'Fat', 'Protein'],
-            datasets: [{ data: [carbAvg, fatAvg, proteinAvg], backgroundColor: ['#2f6fa8', '#b3791d', '#b83f57'], borderColor: '#ffffff', borderWidth: 2 }]
+            datasets: [{
+              data: [carbAvg, fatAvg, proteinAvg],
+              backgroundColor: ['#2f6fa8', '#b3791d', '#b83f57'],
+              borderColor: '#ffffff',
+              borderWidth: 2
+            }]
           },
           options: {
             responsive: true,
-            plugins: { legend: { position: 'bottom', labels: { color: '#756f66', font: { family: 'JetBrains Mono', size: 11 } } } }
-          }
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  color: '#756f66',
+                  font: { family: 'JetBrains Mono', size: 11 },
+                  padding: 12
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    const val = context.raw || 0;
+                    const pct = totalAvgGrams ? Math.round((val / totalAvgGrams) * 100) : 0;
+                    const macroNames = ['Carbs', 'Fat', 'Protein'];
+                    const name = macroNames[context.dataIndex] || context.label;
+                    return ` ${name}: ${val}g (${pct}%)`;
+                  }
+                }
+              }
+            }
+          },
+          plugins: [{
+            id: 'sliceLabelsAndCenterText',
+            afterDraw(chart) {
+              const { ctx, chartArea } = chart;
+              if (!chartArea) return;
+              const { top, bottom, left, right } = chartArea;
+              ctx.save();
+
+              // Draw slice labels (grams & percentage) directly on each slice
+              const meta = chart.getDatasetMeta(0);
+              if (meta && meta.data) {
+                meta.data.forEach((element, index) => {
+                  const val = chart.data.datasets[0].data[index];
+                  if (!val || val <= 0) return;
+
+                  const pct = totalAvgGrams ? Math.round((val / totalAvgGrams) * 100) : 0;
+                  const { startAngle, endAngle, outerRadius, innerRadius, x, y } = element;
+                  const angle = startAngle + (endAngle - startAngle) / 2;
+                  const middleRadius = innerRadius + (outerRadius - innerRadius) / 2;
+
+                  const labelX = x + Math.cos(angle) * middleRadius;
+                  const labelY = y + Math.sin(angle) * middleRadius;
+
+                  ctx.save();
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'middle';
+                  ctx.fillStyle = '#ffffff';
+                  ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+                  ctx.shadowBlur = 3;
+                  ctx.font = '700 11px "JetBrains Mono", monospace';
+                  ctx.fillText(`${val}g (${pct}%)`, labelX, labelY);
+                  ctx.restore();
+                });
+              }
+
+              // Draw center total text inside doughnut hole
+              const centerX = (left + right) / 2;
+              const centerY = (top + bottom) / 2;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillStyle = '#201f1c';
+              ctx.font = '700 15px "JetBrains Mono", monospace';
+              ctx.fillText(`${totalAvgGrams}g`, centerX, centerY - 6);
+              ctx.fillStyle = '#756f66';
+              ctx.font = '500 10px "Inter", sans-serif';
+              ctx.fillText('avg / day', centerX, centerY + 10);
+              ctx.restore();
+            }
+          }]
         });
       }
 
