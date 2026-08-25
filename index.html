@@ -1,627 +1,953 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ledger — Daily Macro Tracker</title>
-<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" onerror="window.__chartLoadFailed=true"></script>
-<style>
-  :root{
-    --bg: #f7f6f3;
-    --panel: #ffffff;
-    --panel-raised: #f0eee9;
-    --line: #e1ddd4;
-    --text: #201f1c;
-    --text-dim: #756f66;
-    --carb: #2f6fa8;    /* blue  */
-    --fat: #b3791d;     /* amber */
-    --protein: #b83f57; /* rose  */
-    --kcal: #3a3733;    /* charcoal, stands in for "bone" on light bg */
-    --good: #2f8f5f;
-    --bad: #b83f57;
-    --warn: #b3791d;
-    --radius: 10px;
-    --display: 'Space Grotesk', 'Segoe UI', sans-serif;
-    --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
-    --body: 'Inter', 'Segoe UI', sans-serif;
-  }
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Macro Tracker</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"
+    onerror="window.__chartLoadFailed=true"></script>
+  <style>
+    :root {
+      --bg: #f7f6f3;
+      --panel: #ffffff;
+      --panel-raised: #f0eee9;
+      --line: #e1ddd4;
+      --text: #201f1c;
+      --text-dim: #756f66;
+      --carb: #2f6fa8;
+      /* blue  */
+      --fat: #b3791d;
+      /* amber */
+      --protein: #b83f57;
+      /* rose  */
+      --kcal: #3a3733;
+      /* charcoal, stands in for "bone" on light bg */
+      --good: #2f8f5f;
+      --bad: #b83f57;
+      --warn: #b3791d;
+      --radius: 10px;
+      --display: 'Space Grotesk', 'Segoe UI', sans-serif;
+      --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      --body: 'Inter', 'Segoe UI', sans-serif;
+    }
 
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--body);}
-  body{padding:0 0 80px;}
-  a{color:inherit;}
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-  .wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+    * {
+      box-sizing: border-box;
+    }
 
-  header.hero{
-    padding:48px 0 28px;
-    border-bottom:1px solid var(--line);
-    margin-bottom:32px;
-  }
-  header.hero .eyebrow{
-    font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
-    color:var(--text-dim); margin-bottom:10px;
-  }
-  header.hero h1{
-    font-family:var(--display); font-weight:700; font-size:clamp(28px,4vw,42px);
-    margin:0 0 8px; letter-spacing:-0.01em;
-  }
-  header.hero p{color:var(--text-dim); margin:0; font-size:15px; max-width:560px;}
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+    }
 
-  .today-strip{
-    display:flex; gap:14px; margin-top:28px; flex-wrap:wrap;
-  }
-  .gauge{
-    flex:1; min-width:130px;
-    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-    padding:14px 16px;
-  }
-  .gauge .label{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); font-family:var(--mono);}
-  .gauge .value{font-family:var(--mono); font-size:22px; font-weight:700; margin-top:4px;}
-  .gauge .sub{font-size:12px; color:var(--text-dim); margin-top:2px;}
-  .gauge.kcal{border-top:3px solid var(--kcal);}
-  .gauge.carb{border-top:3px solid var(--carb);}
-  .gauge.fat{border-top:3px solid var(--fat);}
-  .gauge.protein{border-top:3px solid var(--protein);}
-  .gauge .bar-track{height:4px;background:var(--line);border-radius:2px;margin-top:10px;overflow:hidden;}
-  .gauge .bar-fill{height:100%;border-radius:2px;}
+    body {
+      padding: 0 0 80px;
+    }
 
-  section{margin-bottom:40px;}
-  .section-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px; gap:12px; flex-wrap:wrap;}
-  .section-head h2{font-family:var(--display); font-size:19px; font-weight:600; margin:0; display:flex; align-items:baseline; gap:10px;}
-  .section-head h2 .idx{font-family:var(--mono); color:var(--text-dim); font-size:13px;}
-  .section-head .actions{display:flex; gap:8px; flex-wrap:wrap;}
+    a {
+      color: inherit;
+    }
 
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:22px;}
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
 
-  form.entry-form{display:grid; grid-template-columns:repeat(5,1fr); gap:14px; align-items:end;}
-  @media (max-width:760px){form.entry-form{grid-template-columns:repeat(2,1fr);}}
-  .field label{display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; font-family:var(--mono);}
-  .field input{
-    width:100%; background:var(--panel-raised); border:1px solid var(--line); color:var(--text);
-    padding:10px 11px; border-radius:7px; font-family:var(--mono); font-size:14px;
-  }
-  .field input:focus{outline:none; border-color:var(--carb);}
-  .estimate-line{grid-column:1/-1; font-size:12px; color:var(--text-dim); font-family:var(--mono); min-height:16px;}
-  .estimate-line strong{color:var(--text);}
+    header.hero {
+      padding: 48px 0 28px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 32px;
+    }
 
-  button{
-    font-family:var(--body); font-weight:600; font-size:13px; cursor:pointer;
-    border-radius:7px; border:1px solid var(--line); background:var(--panel-raised); color:var(--text);
-    padding:9px 16px; transition:border-color .15s, background .15s;
-  }
-  button:hover{border-color:var(--carb);}
-  button.primary{background:var(--carb); border-color:var(--carb); color:#0d1114;}
-  button.primary:hover{background:#5cabee;}
-  button.ghost{background:transparent;}
-  button.danger:hover{border-color:var(--bad);}
+    header.hero .eyebrow {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
 
-  table{width:100%; border-collapse:collapse; font-size:13.5px;}
-  th{
-    text-align:left; font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.06em;
-    color:var(--text-dim); font-weight:500; padding:8px 10px; border-bottom:1px solid var(--line);
-  }
-  td{padding:9px 10px; border-bottom:1px solid var(--line); font-family:var(--mono); }
-  tr:last-child td{border-bottom:none;}
-  tr.editable-row:hover{background:var(--panel-raised); cursor:pointer;}
-  .badge{
-    display:inline-block; padding:2px 8px; border-radius:20px; font-size:11.5px; font-weight:700;
-  }
-  .badge.good{background:rgba(76,175,125,.16); color:var(--good);}
-  .badge.warn{background:rgba(224,168,62,.16); color:var(--warn);}
-  .badge.bad{background:rgba(212,86,110,.16); color:var(--bad);}
-  .row-actions button{padding:4px 9px; font-size:12px;}
+    header.hero h1 {
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: clamp(28px, 4vw, 42px);
+      margin: 0 0 8px;
+      letter-spacing: -0.01em;
+    }
 
-  .charts-grid{display:grid; grid-template-columns:2fr 1fr; gap:16px;}
-  @media (max-width:820px){.charts-grid{grid-template-columns:1fr;}}
-  .chart-box{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
-  .chart-box h3{margin:0 0 12px; font-family:var(--display); font-size:14px; font-weight:600; color:var(--text-dim);}
-  canvas{max-width:100%;}
+    header.hero p {
+      color: var(--text-dim);
+      margin: 0;
+      font-size: 15px;
+      max-width: 560px;
+    }
 
-  .filter-row{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:end;}
-  .filter-row .field{min-width:160px;}
+    .today-strip {
+      display: flex;
+      gap: 14px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
 
-  .settings-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
-  @media (max-width:760px){.settings-grid{grid-template-columns:repeat(2,1fr);}}
-  .settings-card{background:var(--panel-raised); border:1px solid var(--line); border-radius:8px; padding:14px;}
-  .settings-card .macro-name{font-family:var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px;}
-  .settings-card .mini-fields{display:flex; gap:6px;}
-  .settings-card .mini-fields .field{flex:1;}
-  .settings-card .mini-fields input{padding:7px 8px; font-size:12.5px;}
-  .settings-card .mini-fields label{font-size:9.5px; margin-bottom:4px;}
+    .gauge {
+      flex: 1;
+      min-width: 130px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
 
-  .empty-state{padding:32px; text-align:center; color:var(--text-dim); font-size:13.5px;}
-  .toast{
-    position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
-    background:var(--panel-raised); border:1px solid var(--line); border-radius:8px;
-    padding:10px 18px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
-    font-family:var(--mono);
-  }
-  .toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+    .gauge .label {
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      font-family: var(--mono);
+    }
 
-  input[type="file"]{display:none;}
-  .file-label{display:inline-block;}
-  .hint{font-size:11.5px; color:var(--text-dim); margin-top:4px;}
-</style>
+    .gauge .value {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .gauge .sub {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    .gauge.kcal {
+      border-top: 3px solid var(--kcal);
+    }
+
+    .gauge.carb {
+      border-top: 3px solid var(--carb);
+    }
+
+    .gauge.fat {
+      border-top: 3px solid var(--fat);
+    }
+
+    .gauge.protein {
+      border-top: 3px solid var(--protein);
+    }
+
+    .gauge .bar-track {
+      height: 4px;
+      background: var(--line);
+      border-radius: 2px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .gauge .bar-fill {
+      height: 100%;
+      border-radius: 2px;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .section-head h2 {
+      font-family: var(--display);
+      font-size: 19px;
+      font-weight: 600;
+      margin: 0;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .section-head h2 .idx {
+      font-family: var(--mono);
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .section-head .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+    }
+
+    form.entry-form {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      align-items: end;
+    }
+
+    @media (max-width:760px) {
+      form.entry-form {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      font-family: var(--mono);
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--panel-raised);
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding: 10px 11px;
+      border-radius: 7px;
+      font-family: var(--mono);
+      font-size: 14px;
+    }
+
+    .field input:focus {
+      outline: none;
+      border-color: var(--carb);
+    }
+
+    .estimate-line {
+      grid-column: 1/-1;
+      font-size: 12px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      min-height: 16px;
+    }
+
+    .estimate-line strong {
+      color: var(--text);
+    }
+
+    button {
+      font-family: var(--body);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 7px;
+      border: 1px solid var(--line);
+      background: var(--panel-raised);
+      color: var(--text);
+      padding: 9px 16px;
+      transition: border-color .15s, background .15s;
+    }
+
+    button:hover {
+      border-color: var(--carb);
+    }
+
+    button.primary {
+      background: var(--carb);
+      border-color: var(--carb);
+      color: var(--panel);
+    }
+
+    button.primary:hover {
+      background: #5cabee;
+    }
+
+    button.ghost {
+      background: transparent;
+    }
+
+    button.danger:hover {
+      border-color: var(--bad);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+
+    th {
+      text-align: left;
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-dim);
+      font-weight: 500;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--mono);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr.editable-row:hover {
+      background: var(--panel-raised);
+      cursor: pointer;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .badge.good {
+      background: rgba(76, 175, 125, .16);
+      color: var(--good);
+    }
+
+    .badge.warn {
+      background: rgba(224, 168, 62, .16);
+      color: var(--warn);
+    }
+
+    .badge.bad {
+      background: rgba(212, 86, 110, .16);
+      color: var(--bad);
+    }
+
+    .row-actions button {
+      padding: 4px 9px;
+      font-size: 12px;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width:820px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-box {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    .chart-box h3 {
+      margin: 0 0 12px;
+      font-family: var(--display);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    canvas {
+      max-width: 100%;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      align-items: end;
+    }
+
+    .filter-row .field {
+      min-width: 160px;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width:760px) {
+      .settings-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .settings-card {
+      background: var(--panel-raised);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .settings-card .macro-name {
+      font-family: var(--mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+    }
+
+    .settings-card .mini-fields {
+      display: flex;
+      gap: 6px;
+    }
+
+    .settings-card .mini-fields .field {
+      flex: 1;
+    }
+
+    .settings-card .mini-fields input {
+      padding: 7px 8px;
+      font-size: 12.5px;
+    }
+
+    .settings-card .mini-fields label {
+      font-size: 9.5px;
+      margin-bottom: 4px;
+    }
+
+    .empty-state {
+      padding: 32px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13.5px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--panel-raised);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+      font-family: var(--mono);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .file-label {
+      display: inline-block;
+    }
+
+    .hint {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+  </style>
 </head>
+
 <body>
-<div class="wrap">
+  <div class="wrap">
 
-  <header class="hero">
-    <div class="eyebrow">Daily calorie &amp; macro tracker</div>
-    <h1 id="heroTitle">Today, logged in three macros.</h1>
-    <p>Enter what you ate, watch it land against your ranges, and keep a rolling record — everything stays on this device, exportable any time.</p>
+    <header class="hero">
+      <div class="eyebrow">Daily calorie &amp; macro tracker</div>
+      <div class="today-strip" id="todayStrip"></div>
+    </header>
 
-    <div class="today-strip" id="todayStrip"></div>
-  </header>
-
-  <!-- 1. Entry form -->
-  <section id="entry">
-    <div class="section-head">
-      <h2><span class="idx">01</span> Log a day</h2>
-    </div>
-    <div class="panel">
-      <form class="entry-form" id="entryForm">
-        <div class="field"><label for="f-date">Date</label><input type="date" id="f-date" required></div>
-        <div class="field"><label for="f-cal">Calories (kcal)</label><input type="number" id="f-cal" min="0" step="1" placeholder="2000"></div>
-        <div class="field"><label for="f-carb">Carbs (g)</label><input type="number" id="f-carb" min="0" step="1" placeholder="180"></div>
-        <div class="field"><label for="f-fat">Fat (g)</label><input type="number" id="f-fat" min="0" step="1" placeholder="60"></div>
-        <div class="field"><label for="f-protein">Protein (g)</label><input type="number" id="f-protein" min="0" step="1" placeholder="185"></div>
-        <div class="estimate-line" id="estimateLine"></div>
-        <div style="grid-column:1/-1; display:flex; gap:10px;">
-          <button type="submit" class="primary">Save day</button>
-          <button type="button" class="ghost" id="clearFormBtn">Clear</button>
-        </div>
-      </form>
-    </div>
-  </section>
-
-  <!-- 2. 7-day history -->
-  <section id="recent">
-    <div class="section-head">
-      <h2><span class="idx">02</span> Last 7 days</h2>
-    </div>
-    <div class="panel" style="padding:0; overflow-x:auto;">
-      <table id="recentTable">
-        <thead>
-          <tr><th>Date</th><th>Calories</th><th>Carbs</th><th>Fat</th><th>Protein</th><th></th></tr>
-        </thead>
-        <tbody id="recentBody"></tbody>
-      </table>
-      <div class="empty-state" id="recentEmpty" style="display:none;">No entries yet — log today above to start your history.</div>
-    </div>
-  </section>
-
-  <!-- 3. Reports & graphs -->
-  <section id="reports">
-    <div class="section-head">
-      <h2><span class="idx">03</span> Trends vs. goal</h2>
-    </div>
-    <div class="charts-grid">
-      <div class="chart-box">
-        <h3>Calories — last 14 entries</h3>
-        <canvas id="calChart" height="140"></canvas>
+    <!-- 1. Entry form -->
+    <section id="entry">
+      <div class="section-head">
+        <h2><span class="idx">01</span> Log a day</h2>
       </div>
-      <div class="chart-box">
-        <h3>Macro split — 7-day average (g)</h3>
-        <canvas id="macroChart" height="140"></canvas>
+      <div class="panel">
+        <form class="entry-form" id="entryForm">
+          <div class="field"><label for="f-date">Date</label><input type="date" id="f-date" required></div>
+          <div class="field"><label for="f-cal">Calories (kcal)</label><input type="number" id="f-cal" min="0" step="1"
+              placeholder="2000"></div>
+          <div class="field"><label for="f-carb">Carbs (g)</label><input type="number" id="f-carb" min="0" step="1"
+              placeholder="180"></div>
+          <div class="field"><label for="f-fat">Fat (g)</label><input type="number" id="f-fat" min="0" step="1"
+              placeholder="60"></div>
+          <div class="field"><label for="f-protein">Protein (g)</label><input type="number" id="f-protein" min="0"
+              step="1" placeholder="185"></div>
+          <div class="estimate-line" id="estimateLine"></div>
+          <div style="grid-column:1/-1; display:flex; gap:10px;">
+            <button type="submit" class="primary">Save day</button>
+            <button type="button" class="ghost" id="clearFormBtn">Clear</button>
+          </div>
+        </form>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- 4. Historical search & filter -->
-  <section id="history">
-    <div class="section-head">
-      <h2><span class="idx">04</span> Full history</h2>
-      <div class="actions">
-        <button id="exportBtn">Export CSV</button>
-        <button id="connectCSVBtn">Connect persistent CSV</button>
-        <label class="file-label"><button type="button" onclick="document.getElementById('importInput').click()">Import CSV</button></label>
-        <input type="file" id="importInput" accept=".csv">
+    <!-- 2. 7-day history -->
+    <section id="recent">
+      <div class="section-head">
+        <h2><span class="idx">02</span> Last 7 days</h2>
       </div>
-    </div>
-    <div class="panel">
-      <div class="filter-row">
-        <div class="field"><label for="filterStart">From</label><input type="date" id="filterStart"></div>
-        <div class="field"><label for="filterEnd">To</label><input type="date" id="filterEnd"></div>
-        <button id="applyFilter">Filter</button>
-        <button class="ghost" id="resetFilter">Reset</button>
-      </div>
-      <div style="overflow-x:auto;">
-        <table id="historyTable">
+      <div class="panel" style="padding:0; overflow-x:auto;">
+        <table id="recentTable">
           <thead>
-            <tr><th>Date</th><th>Calories</th><th>Carbs</th><th>Fat</th><th>Protein</th><th></th></tr>
+            <tr>
+              <th>Date</th>
+              <th>Calories</th>
+              <th>Carbs</th>
+              <th>Fat</th>
+              <th>Protein</th>
+              <th></th>
+            </tr>
           </thead>
-          <tbody id="historyBody"></tbody>
+          <tbody id="recentBody"></tbody>
         </table>
+        <div class="empty-state" id="recentEmpty" style="display:none;">No entries yet — log today above to start your
+          history.</div>
       </div>
-      <div class="empty-state" id="historyEmpty" style="display:none;">No entries in range.</div>
-    </div>
-  </section>
+    </section>
 
-  <!-- 5. Settings / thresholds -->
-  <section id="settings">
-    <div class="section-head">
-      <h2><span class="idx">05</span> Goals &amp; ranges</h2>
-      <div class="hint">Min/Max set the green zone on badges and charts. Calorie goal auto-fills from macros (4·carb + 4·protein + 9·fat) — edit any value to override.</div>
-    </div>
-    <div class="panel">
-      <div class="settings-grid" id="settingsGrid"></div>
-      <div style="margin-top:16px;"><button class="primary" id="saveSettingsBtn">Save goals</button></div>
-    </div>
-  </section>
+    <!-- 3. Reports & graphs -->
+    <section id="reports">
+      <div class="section-head">
+        <h2><span class="idx">03</span> Trends vs. goal</h2>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h3>Calories — last 14 entries</h3>
+          <canvas id="calChart" height="140"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Macro split — 7-day average (g)</h3>
+          <canvas id="macroChart" height="140"></canvas>
+        </div>
+      </div>
+    </section>
 
-</div>
+    <!-- 4. Historical search & filter -->
+    <section id="history">
+      <div class="section-head">
+        <h2><span class="idx">04</span> Full history</h2>
+        <div class="actions">
+          <button id="exportBtn">Export CSV</button>
+          <button id="connectCSVBtn">Connect persistent CSV</button>
+          <label class="file-label"><button type="button"
+              onclick="document.getElementById('importInput').click()">Import CSV</button></label>
+          <input type="file" id="importInput" accept=".csv">
+        </div>
+      </div>
+      <div class="panel">
+        <div class="filter-row">
+          <div class="field"><label for="filterStart">From</label><input type="date" id="filterStart"></div>
+          <div class="field"><label for="filterEnd">To</label><input type="date" id="filterEnd"></div>
+          <button id="applyFilter">Filter</button>
+          <button class="ghost" id="resetFilter">Reset</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table id="historyTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Calories</th>
+                <th>Carbs</th>
+                <th>Fat</th>
+                <th>Protein</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="historyEmpty" style="display:none;">No entries in range.</div>
+      </div>
+    </section>
 
-<div class="toast" id="toast"></div>
+    <!-- 5. Settings / thresholds -->
+    <section id="settings">
+      <div class="section-head">
+        <h2><span class="idx">05</span> Goals &amp; ranges</h2>
+        <div class="hint">Min/Max set the green zone on badges and charts. Calorie goal auto-fills from macros (4·carb +
+          4·protein + 9·fat) — edit any value to override.</div>
+      </div>
+      <div class="panel">
+        <div class="settings-grid" id="settingsGrid"></div>
+        <div style="margin-top:16px;"><button class="primary" id="saveSettingsBtn">Save goals</button></div>
 
-<script>
-(function(){
-  const STORAGE_KEY = 'macroTracker.entries.v1';
-  const SETTINGS_KEY = 'macroTracker.settings.v1';
+        <div style="margin-top:24px; border-top:1px solid var(--line); padding-top:16px;">
+          <h3 style="font-size:14px; font-family:var(--display); margin:0 0 6px;">GitHub Pages Multi-Device CSV Sync</h3>
+          <p class="hint" style="margin-bottom:12px;">Enter a GitHub Access Token with <code>repo</code> access to automatically commit <code>data.csv</code> updates to your GitHub Pages repository from any device or browser.</p>
+          <div style="display:flex; gap:10px; max-width:540px; align-items:center; flex-wrap:wrap;">
+            <input type="password" id="ghTokenInput" placeholder="GitHub Access Token (ghp_...)" style="flex:1; min-width:200px; background:var(--panel-raised); border:1px solid var(--line); color:var(--text); padding:9px 11px; border-radius:7px; font-family:var(--mono); font-size:13px;">
+            <button type="button" id="saveGHTokenBtn">Save Token</button>
+            <button type="button" class="ghost" id="clearGHTokenBtn">Clear Token</button>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  // Persistence architecture:
-  // - IndexedDB is the primary durable store. It is much better suited than
-  //   localStorage for a growing history and does not depend on a small quota.
-  // - localStorage remains as a synchronous fallback/cache so an older browser
-  //   or a private browsing mode does not immediately lose the UI state.
-  // - Every successful data mutation schedules a CSV snapshot. Browsers cannot
-  //   silently write an arbitrary file to disk, so the app uses the File System
-  //   Access API when the user grants a file location. If unavailable, it keeps
-  //   the latest CSV snapshot in IndexedDB and offers Export CSV.
-  const DB_NAME = 'macroTracker.db';
-  const DB_VERSION = 1;
-  const ENTRY_STORE = 'entries';
-  const META_STORE = 'meta';
-  const CSV_SNAPSHOT_KEY = 'latest.csv';
+  </div>
 
-  let dbPromise = null;
-  let csvFileHandle = null;
-  let persistenceReady = false;
+  <div class="toast" id="toast"></div>
 
-  function openDB(){
-    if(dbPromise) return dbPromise;
-    dbPromise = new Promise((resolve, reject)=>{
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = () => {
-        const db = request.result;
-        if(!db.objectStoreNames.contains(ENTRY_STORE)){
-          db.createObjectStore(ENTRY_STORE);
-        }
-        if(!db.objectStoreNames.contains(META_STORE)){
-          db.createObjectStore(META_STORE);
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    return dbPromise;
-  }
+  <script>
+    (function () {
+      const STORAGE_KEY = 'macroTracker.entries.v1';
+      const SETTINGS_KEY = 'macroTracker.settings.v1';
+      const GH_TOKEN_KEY = 'macroTracker.ghToken.v1';
+      const GH_REPO = 'mriostamez/mriostamez.github.io';
+      const CSV_FILE_PATH = 'data.csv';
 
-  async function idbGet(storeName, key){
-    const db = await openDB();
-    return new Promise((resolve, reject)=>{
-      const tx = db.transaction(storeName, 'readonly');
-      const req = tx.objectStore(storeName).get(key);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
+      let csvFileHandle = null;
 
-  async function idbPut(storeName, key, value){
-    const db = await openDB();
-    return new Promise((resolve, reject)=>{
-      const tx = db.transaction(storeName, 'readwrite');
-      tx.objectStore(storeName).put(value, key);
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
-    });
-  }
+      function csvFromEntries(sourceEntries) {
+        const dates = Object.keys(sourceEntries).sort((a, b) => a.localeCompare(b));
+        const lines = ['Date,Calories,Carbs,Fat,Protein'];
+        dates.forEach(iso => {
+          const e = sourceEntries[iso] || {};
+          lines.push([
+            iso,
+            e.calories ?? '',
+            e.carbs ?? '',
+            e.fat ?? '',
+            e.protein ?? ''
+          ].join(','));
+        });
+        return lines.join('\n') + '\n';
+      }
 
-  async function idbReplaceEntries(entries){
-    const db = await openDB();
-    return new Promise((resolve, reject)=>{
-      const tx = db.transaction(ENTRY_STORE, 'readwrite');
-      const store = tx.objectStore(ENTRY_STORE);
-      store.clear();
-      Object.entries(entries).forEach(([date, entry]) => store.put(entry, date));
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
-    });
-  }
-
-  async function idbLoadEntries(){
-    const db = await openDB();
-    return new Promise((resolve, reject)=>{
-      const tx = db.transaction(ENTRY_STORE, 'readonly');
-      const req = tx.objectStore(ENTRY_STORE).getAll();
-      req.onsuccess = () => {
+      function entriesFromCSV(csvText) {
         const result = {};
-        req.result.forEach(entry => {
-          if(entry && entry.date) result[entry.date] = {
-            calories: entry.calories ?? '',
-            carbs: entry.carbs ?? '',
-            fat: entry.fat ?? '',
-            protein: entry.protein ?? ''
+        if (!csvText) return result;
+        const lines = csvText.split(/\r?\n/).filter(l => l.trim().length);
+        if (lines.length <= 1) return result;
+
+        lines.slice(1).forEach(line => {
+          const [date, cal, carb, fat, protein] = line.split(',');
+          if (!date) return;
+          const iso = date.trim().slice(0, 10);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+          result[iso] = {
+            calories: cal !== undefined && cal !== '' && !isNaN(cal) ? parseFloat(cal) : '',
+            carbs: carb !== undefined && carb !== '' && !isNaN(carb) ? parseFloat(carb) : '',
+            fat: fat !== undefined && fat !== '' && !isNaN(fat) ? parseFloat(fat) : '',
+            protein: protein !== undefined && protein !== '' && !isNaN(protein) ? parseFloat(protein) : '',
           };
         });
-        resolve(result);
+        return result;
+      }
+
+      async function syncToGitHub(csvContent) {
+        const token = localStorage.getItem(GH_TOKEN_KEY);
+        if (!token) return;
+
+        try {
+          const url = `https://api.github.com/repos/${GH_REPO}/contents/${CSV_FILE_PATH}`;
+          let sha = null;
+          try {
+            const getRes = await fetch(url, {
+              headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' }
+            });
+            if (getRes.ok) {
+              const getData = await getRes.json();
+              sha = getData.sha;
+            }
+          } catch (e) {}
+
+          const base64Content = btoa(unescape(encodeURIComponent(csvContent)));
+
+          const bodyData = {
+            message: 'Update data.csv via Daily Macro Tracker',
+            content: base64Content,
+            sha: sha || undefined
+          };
+
+          const putRes = await fetch(url, {
+            method: 'PUT',
+            headers: {
+              Authorization: `token ${token}`,
+              'Content-Type': 'application/json',
+              Accept: 'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify(bodyData)
+          });
+
+          if (putRes.ok) {
+            toast('Synced data.csv to GitHub Repo');
+          } else {
+            console.warn('GitHub API sync returned status:', putRes.status);
+          }
+        } catch (err) {
+          console.error('GitHub API sync failed:', err);
+        }
+      }
+
+      async function saveCSVSnapshot(sourceEntries) {
+        const csv = csvFromEntries(sourceEntries);
+
+        if (csvFileHandle) {
+          try {
+            const writable = await csvFileHandle.createWritable();
+            await writable.write(csv);
+            await writable.close();
+          } catch (err) {
+            console.warn('File handle write failed:', err);
+            csvFileHandle = null;
+          }
+        }
+
+        syncToGitHub(csv);
+      }
+
+      async function persistEntries(sourceEntries) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sourceEntries)); } catch (e) { }
+        await saveCSVSnapshot(sourceEntries);
+      }
+
+      async function restoreEntries() {
+        try {
+          const res = await fetch(`./${CSV_FILE_PATH}?t=${Date.now()}`);
+          if (res.ok) {
+            const text = await res.text();
+            const loaded = entriesFromCSV(text);
+            if (Object.keys(loaded).length > 0) {
+              try { localStorage.setItem(STORAGE_KEY, JSON.stringify(loaded)); } catch (e) { }
+              return loaded;
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to fetch data.csv from repo:', err);
+        }
+
+        return loadEntries();
+      }
+
+      async function chooseCSVFile() {
+        if (!('showOpenFilePicker' in window) && !('showSaveFilePicker' in window)) {
+          toast('Direct file saving unavailable in this browser; use Export CSV.');
+          return;
+        }
+
+        try {
+          if ('showOpenFilePicker' in window) {
+            const [handle] = await window.showOpenFilePicker({
+              types: [{ description: 'CSV file', accept: { 'text/csv': ['.csv'] } }]
+            });
+            csvFileHandle = handle;
+            const file = await csvFileHandle.getFile();
+            const text = await file.text();
+            const loaded = entriesFromCSV(text);
+            if (Object.keys(loaded).length > 0) {
+              entries = loaded;
+              await persistEntries(entries);
+              renderAll();
+            }
+          } else {
+            csvFileHandle = await window.showSaveFilePicker({
+              suggestedName: 'data.csv',
+              types: [{ description: 'CSV file', accept: { 'text/csv': ['.csv'] } }]
+            });
+            await saveCSVSnapshot(entries);
+          }
+          toast('CSV persistence connected');
+        } catch (err) {
+          if (err && err.name !== 'AbortError') {
+            console.error(err);
+            toast('Could not connect the CSV file');
+          }
+        }
+      }
+
+      const MACROS = [
+        { key: 'calories', label: 'Calories', unit: 'kcal', color: '--kcal' },
+        { key: 'carbs', label: 'Carbs', unit: 'g', color: '--carb' },
+        { key: 'fat', label: 'Fat', unit: 'g', color: '--fat' },
+        { key: 'protein', label: 'Protein', unit: 'g', color: '--protein' },
+      ];
+
+      const DEFAULT_SETTINGS = {
+        carbs: { goal: 180, min: 175, max: 185 },
+        fat: { goal: 60, min: 55, max: 65 },
+        protein: { goal: 185, min: 180, max: 190 },
+        calories: { goal: 2000, min: 1900, max: 2100 },
       };
-      req.onerror = () => reject(req.error);
-    });
-  }
 
-  function csvFromEntries(sourceEntries){
-    const dates = Object.keys(sourceEntries).sort((a,b)=>a.localeCompare(b));
-    const lines = ['Date,Calories,Carbs,Fat,Protein'];
-    dates.forEach(iso=>{
-      const e = sourceEntries[iso] || {};
-      lines.push([
-        iso,
-        e.calories ?? '',
-        e.carbs ?? '',
-        e.fat ?? '',
-        e.protein ?? ''
-      ].join(','));
-    });
-    return lines.join('\\n') + '\\n';
-  }
-
-  async function saveCSVSnapshot(sourceEntries){
-    const csv = csvFromEntries(sourceEntries);
-
-    // Always keep the latest CSV inside IndexedDB. This means the CSV data
-    // survives a page reload even when direct filesystem access is unavailable.
-    await idbPut(META_STORE, CSV_SNAPSHOT_KEY, {
-      csv,
-      savedAt: new Date().toISOString()
-    });
-
-    // If the user has previously selected a real CSV file, update it on
-    // every mutation. This is the strongest "always save as CSV" mode
-    // available to a browser without a backend/server.
-    if(csvFileHandle){
-      try{
-        const writable = await csvFileHandle.createWritable();
-        await writable.write(csv);
-        await writable.close();
-      }catch(err){
-        // File permission can expire or the file can be moved/deleted.
-        // Keep the IndexedDB snapshot and let the user reconnect a file.
-        csvFileHandle = null;
+      function loadEntries() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch (e) { return {}; }
       }
-    }
-  }
 
-  async function persistEntries(sourceEntries){
-    // Write to both durable storage mechanisms. IndexedDB is the canonical
-    // application store; localStorage is retained as a compatibility fallback.
-    await idbReplaceEntries(sourceEntries);
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(sourceEntries)); }catch(e){}
-    await saveCSVSnapshot(sourceEntries);
-  }
-
-  async function restoreEntries(){
-    try{
-      const durable = await idbLoadEntries();
-      if(Object.keys(durable).length){
-        persistenceReady = true;
-        return durable;
+      function saveEntries(nextEntries) {
+        return persistEntries(nextEntries);
       }
-    }catch(err){
-      console.warn('IndexedDB load failed; falling back to localStorage.', err);
-    }
 
-    const fallback = loadEntries();
-    try{
-      await idbReplaceEntries(fallback);
-      await saveCSVSnapshot(fallback);
-    }catch(err){
-      console.warn('Durable migration failed.', err);
-    }
-    persistenceReady = true;
-    return fallback;
-  }
+      function loadSettings() {
+        try {
+          const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+          return s ? Object.assign({}, DEFAULT_SETTINGS, s) : JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+        } catch (e) { return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); }
+      }
+      function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
 
-  async function chooseCSVFile(){
-    if(!('showSaveFilePicker' in window)){
-      toast('Automatic CSV file saving is unavailable in this browser; use Export CSV.');
-      return;
-    }
+      let entries = loadEntries();
+      let settings = loadSettings();
 
-    try{
-      csvFileHandle = await window.showSaveFilePicker({
-        suggestedName: `macro-tracker-${todayISO()}.csv`,
-        types: [{
-          description: 'CSV file',
-          accept: {'text/csv': ['.csv']}
-        }]
+      function toast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toast._h);
+        toast._h = setTimeout(() => t.classList.remove('show'), 1800);
+      }
+
+      function todayISO() {
+        const d = new Date();
+        return d.toISOString().slice(0, 10);
+      }
+
+      function fmtDisplayDate(iso) {
+        const [y, m, d] = iso.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' });
+      }
+
+      function estimateCalories(carb, fat, protein) {
+        return Math.round((carb || 0) * 4 + (protein || 0) * 4 + (fat || 0) * 9);
+      }
+
+      function statusFor(macroKey, value) {
+        const r = settings[macroKey];
+        if (!r || value === undefined || value === null || value === '') return null;
+        if (value < r.min) return 'warn';
+        if (value > r.max) return 'bad';
+        return 'good';
+      }
+
+      function badge(macroKey, value) {
+        if (value === undefined || value === null || value === '') return '<span style="color:var(--text-dim)">—</span>';
+        const s = statusFor(macroKey, value);
+        const cls = s || 'warn';
+        return `<span class="badge ${cls}">${value}</span>`;
+      }
+
+      // ---------- Entry form ----------
+      const form = document.getElementById('entryForm');
+      const dateInput = document.getElementById('f-date');
+      const calInput = document.getElementById('f-cal');
+      const carbInput = document.getElementById('f-carb');
+      const fatInput = document.getElementById('f-fat');
+      const proteinInput = document.getElementById('f-protein');
+      const estimateLine = document.getElementById('estimateLine');
+
+      dateInput.value = todayISO();
+
+      function updateEstimate() {
+        const carb = parseFloat(carbInput.value) || 0;
+        const fat = parseFloat(fatInput.value) || 0;
+        const protein = parseFloat(proteinInput.value) || 0;
+        if (!carbInput.value && !fatInput.value && !proteinInput.value) {
+          estimateLine.innerHTML = '';
+          return;
+        }
+        const est = estimateCalories(carb, fat, protein);
+        estimateLine.innerHTML = `Estimated from macros: <strong>${est} kcal</strong> (4·carb + 4·protein + 9·fat)` +
+          (calInput.value ? ` — logged calories: <strong>${calInput.value}</strong>` : ' — leave Calories blank to auto-fill this.');
+      }
+      [carbInput, fatInput, proteinInput, calInput].forEach(el => el.addEventListener('input', updateEstimate));
+
+      function loadDateIntoForm(iso) {
+        const e = entries[iso];
+        dateInput.value = iso;
+        calInput.value = e ? e.calories : '';
+        carbInput.value = e ? e.carbs : '';
+        fatInput.value = e ? e.fat : '';
+        proteinInput.value = e ? e.protein : '';
+        updateEstimate();
+        window.scrollTo({ top: document.getElementById('entry').offsetTop - 20, behavior: 'smooth' });
+      }
+
+      document.getElementById('clearFormBtn').addEventListener('click', () => {
+        calInput.value = ''; carbInput.value = ''; fatInput.value = ''; proteinInput.value = '';
+        estimateLine.innerHTML = '';
       });
 
-      // Immediately write the complete current history, then every future
-      // save will update this same file.
-      await saveCSVSnapshot(entries);
-      toast('CSV persistence enabled');
-    }catch(err){
-      if(err && err.name !== 'AbortError'){
-        console.error(err);
-        toast('Could not connect the CSV file');
-      }
-    }
-  }
-
-  const MACROS = [
-    {key:'calories', label:'Calories', unit:'kcal', color:'--kcal'},
-    {key:'carbs',    label:'Carbs',    unit:'g',    color:'--carb'},
-    {key:'fat',      label:'Fat',      unit:'g',    color:'--fat'},
-    {key:'protein',  label:'Protein',  unit:'g',    color:'--protein'},
-  ];
-
-  const DEFAULT_SETTINGS = {
-    carbs:    {goal:180, min:175, max:185},
-    fat:      {goal:60,  min:55,  max:65},
-    protein:  {goal:185, min:180, max:190},
-    // calories derived from the macro goals above: 4*180 + 4*185 + 9*60 = 2000
-    calories: {goal:2000, min:1900, max:2100},
-  };
-
-  function loadEntries(){
-    try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }catch(e){ return {}; }
-  }
-
-  // Kept as a compatibility wrapper. New code uses persistEntries() and
-  // awaits completion before telling the user that data was saved.
-  function saveEntries(nextEntries){
-    return persistEntries(nextEntries);
-  }
-
-  function loadSettings(){
-    try{
-      const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-      return s ? Object.assign({}, DEFAULT_SETTINGS, s) : JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-    }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); }
-  }
-  function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
-
-  // Starts empty only long enough for the page to render. initPersistence()
-  // replaces this with the durable IndexedDB copy before normal interaction.
-  let entries = loadEntries();   // { 'YYYY-MM-DD': {calories,carbs,fat,protein} }
-  let settings = loadSettings();
-
-  function toast(msg){
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(toast._h);
-    toast._h = setTimeout(()=>t.classList.remove('show'), 1800);
-  }
-
-  function todayISO(){
-    const d = new Date();
-    return d.toISOString().slice(0,10);
-  }
-
-  function fmtDisplayDate(iso){
-    const [y,m,d] = iso.split('-').map(Number);
-    const dt = new Date(y, m-1, d);
-    return dt.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'2-digit', year:'numeric'});
-  }
-
-  // ---- Core calculation: estimated calories from macros ----
-  // Standard conversion: 4 kcal/g carbs, 4 kcal/g protein, 9 kcal/g fat
-  function estimateCalories(carb, fat, protein){
-    return Math.round((carb||0)*4 + (protein||0)*4 + (fat||0)*9);
-  }
-
-  function statusFor(macroKey, value){
-    const r = settings[macroKey];
-    if(!r || value === undefined || value === null || value === '') return null;
-    if(value < r.min) return 'warn';   // under range
-    if(value > r.max) return 'bad';    // over range
-    return 'good';                     // within range
-  }
-
-  function badge(macroKey, value){
-    if(value === undefined || value === null || value === '') return '<span style="color:var(--text-dim)">—</span>';
-    const s = statusFor(macroKey, value);
-    const cls = s || 'warn';
-    return `<span class="badge ${cls}">${value}</span>`;
-  }
-
-  // ---------- Entry form ----------
-  const form = document.getElementById('entryForm');
-  const dateInput = document.getElementById('f-date');
-  const calInput = document.getElementById('f-cal');
-  const carbInput = document.getElementById('f-carb');
-  const fatInput = document.getElementById('f-fat');
-  const proteinInput = document.getElementById('f-protein');
-  const estimateLine = document.getElementById('estimateLine');
-
-  dateInput.value = todayISO();
-
-  function updateEstimate(){
-    const carb = parseFloat(carbInput.value)||0;
-    const fat = parseFloat(fatInput.value)||0;
-    const protein = parseFloat(proteinInput.value)||0;
-    if(!carbInput.value && !fatInput.value && !proteinInput.value){
-      estimateLine.innerHTML = '';
-      return;
-    }
-    const est = estimateCalories(carb, fat, protein);
-    estimateLine.innerHTML = `Estimated from macros: <strong>${est} kcal</strong> (4·carb + 4·protein + 9·fat)` +
-      (calInput.value ? ` — logged calories: <strong>${calInput.value}</strong>` : ' — leave Calories blank to auto-fill this.');
-  }
-  [carbInput, fatInput, proteinInput, calInput].forEach(el=>el.addEventListener('input', updateEstimate));
-
-  function loadDateIntoForm(iso){
-    const e = entries[iso];
-    dateInput.value = iso;
-    calInput.value = e ? e.calories : '';
-    carbInput.value = e ? e.carbs : '';
-    fatInput.value = e ? e.fat : '';
-    proteinInput.value = e ? e.protein : '';
-    updateEstimate();
-    window.scrollTo({top: document.getElementById('entry').offsetTop - 20, behavior:'smooth'});
-  }
-
-  document.getElementById('clearFormBtn').addEventListener('click', ()=>{
-    calInput.value=''; carbInput.value=''; fatInput.value=''; proteinInput.value='';
-    estimateLine.innerHTML='';
-  });
-
-  form.addEventListener('submit', function(ev){
-    ev.preventDefault();
-    const iso = dateInput.value;
-    if(!iso){ toast('Pick a date first'); return; }
-    const carb = carbInput.value === '' ? undefined : parseFloat(carbInput.value);
-    const fat = fatInput.value === '' ? undefined : parseFloat(fatInput.value);
-    const protein = proteinInput.value === '' ? undefined : parseFloat(proteinInput.value);
-    let cal = calInput.value === '' ? undefined : parseFloat(calInput.value);
-    if(cal === undefined && (carb!==undefined || fat!==undefined || protein!==undefined)){
-      cal = estimateCalories(carb, fat, protein);
-    }
-    entries[iso] = {calories: cal ?? '', carbs: carb ?? '', fat: fat ?? '', protein: protein ?? ''};
-    saveEntries(entries)
-      .then(()=>{
-        toast(`Saved ${fmtDisplayDate(iso)}`);
-        renderAll();
-      })
-      .catch(err=>{
-        console.error(err);
-        toast('Save failed — data was not confirmed as persistent');
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        const iso = dateInput.value;
+        if (!iso) { toast('Pick a date first'); return; }
+        const carb = carbInput.value === '' ? undefined : parseFloat(carbInput.value);
+        const fat = fatInput.value === '' ? undefined : parseFloat(fatInput.value);
+        const protein = proteinInput.value === '' ? undefined : parseFloat(proteinInput.value);
+        let cal = calInput.value === '' ? undefined : parseFloat(calInput.value);
+        if (cal === undefined && (carb !== undefined || fat !== undefined || protein !== undefined)) {
+          cal = estimateCalories(carb, fat, protein);
+        }
+        entries[iso] = { calories: cal ?? '', carbs: carb ?? '', fat: fat ?? '', protein: protein ?? '' };
+        saveEntries(entries)
+          .then(() => {
+            toast(`Saved ${fmtDisplayDate(iso)}`);
+            renderAll();
+          })
+          .catch(err => {
+            console.error(err);
+            toast('Save failed');
+          });
       });
-  });
 
-  // ---------- Today strip ----------
-  function renderTodayStrip(){
-    const iso = todayISO();
-    const e = entries[iso] || {};
-    const strip = document.getElementById('todayStrip');
-    strip.innerHTML = MACROS.map(m=>{
-      const val = e[m.key];
-      const goal = settings[m.key] ? settings[m.key].goal : null;
-      const pct = (val && goal) ? Math.min(100, Math.round((val/goal)*100)) : 0;
-      const status = statusFor(m.key, val);
-      const barColor = status==='good' ? 'var(--good)' : status==='bad' ? 'var(--bad)' : status==='warn' ? 'var(--warn)' : 'var(--line)';
-      return `<div class="gauge ${m.key==='calories'?'kcal':m.key}">
+      // ---------- Today strip ----------
+      function renderTodayStrip() {
+        const iso = todayISO();
+        const e = entries[iso] || {};
+        const strip = document.getElementById('todayStrip');
+        strip.innerHTML = MACROS.map(m => {
+          const val = e[m.key];
+          const goal = settings[m.key] ? settings[m.key].goal : null;
+          const pct = (val && goal) ? Math.min(100, Math.round((val / goal) * 100)) : 0;
+          const status = statusFor(m.key, val);
+          const barColor = status === 'good' ? 'var(--good)' : status === 'bad' ? 'var(--bad)' : status === 'warn' ? 'var(--warn)' : 'var(--line)';
+          return `<div class="gauge ${m.key === 'calories' ? 'kcal' : m.key}">
         <div class="label">${m.label} today</div>
-        <div class="value">${val!==undefined && val!==''? val : '—'}<span style="font-size:12px;color:var(--text-dim);"> ${m.unit}</span></div>
-        <div class="sub">Goal ${goal ?? '—'} ${m.unit}${val!==undefined && val!=='' && goal ? ' · '+pct+'%' : ''}</div>
+        <div class="value">${val !== undefined && val !== '' ? val : '—'}<span style="font-size:12px;color:var(--text-dim);"> ${m.unit}</span></div>
+        <div class="sub">Goal ${goal ?? '—'} ${m.unit}${val !== undefined && val !== '' && goal ? ' · ' + pct + '%' : ''}</div>
         <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${barColor};"></div></div>
       </div>`;
-    }).join('');
-  }
+        }).join('');
+      }
 
-  // ---------- Recent 7-day table ----------
-  function sortedDates(desc=true){
-    return Object.keys(entries).sort((a,b)=> desc ? (a<b?1:-1) : (a<b?-1:1));
-  }
+      // ---------- Recent 7-day table ----------
+      function sortedDates(desc = true) {
+        return Object.keys(entries).sort((a, b) => desc ? (a < b ? 1 : -1) : (a < b ? -1 : 1));
+      }
 
-  function rowHTML(iso, e, withDelete){
-    return `<tr class="editable-row" data-date="${iso}">
+      function rowHTML(iso, e, withDelete) {
+        return `<tr class="editable-row" data-date="${iso}">
       <td>${fmtDisplayDate(iso)}</td>
       <td>${badge('calories', e.calories)}</td>
       <td>${badge('carbs', e.carbs)}</td>
@@ -629,75 +955,75 @@
       <td>${badge('protein', e.protein)}</td>
       <td class="row-actions"><button class="danger" data-delete="${iso}">Delete</button></td>
     </tr>`;
-  }
+      }
 
-  function renderRecent(){
-    const dates = sortedDates().slice(0,7);
-    const body = document.getElementById('recentBody');
-    const empty = document.getElementById('recentEmpty');
-    if(dates.length===0){ body.innerHTML=''; empty.style.display='block'; return; }
-    empty.style.display='none';
-    body.innerHTML = dates.map(iso=>rowHTML(iso, entries[iso])).join('');
-  }
+      function renderRecent() {
+        const dates = sortedDates().slice(0, 7);
+        const body = document.getElementById('recentBody');
+        const empty = document.getElementById('recentEmpty');
+        if (dates.length === 0) { body.innerHTML = ''; empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        body.innerHTML = dates.map(iso => rowHTML(iso, entries[iso])).join('');
+      }
 
-  // ---------- Full history + filter ----------
-  let filterRange = null;
-  function renderHistory(){
-    let dates = sortedDates();
-    if(filterRange){
-      dates = dates.filter(d=> d>=filterRange.start && d<=filterRange.end);
-    }
-    const body = document.getElementById('historyBody');
-    const empty = document.getElementById('historyEmpty');
-    if(dates.length===0){ body.innerHTML=''; empty.style.display='block'; return; }
-    empty.style.display='none';
-    body.innerHTML = dates.map(iso=>rowHTML(iso, entries[iso])).join('');
-  }
+      // ---------- Full history + filter ----------
+      let filterRange = null;
+      function renderHistory() {
+        let dates = sortedDates();
+        if (filterRange) {
+          dates = dates.filter(d => d >= filterRange.start && d <= filterRange.end);
+        }
+        const body = document.getElementById('historyBody');
+        const empty = document.getElementById('historyEmpty');
+        if (dates.length === 0) { body.innerHTML = ''; empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        body.innerHTML = dates.map(iso => rowHTML(iso, entries[iso])).join('');
+      }
 
-  document.getElementById('applyFilter').addEventListener('click', ()=>{
-    const s = document.getElementById('filterStart').value;
-    const e = document.getElementById('filterEnd').value;
-    if(!s || !e){ toast('Pick both dates'); return; }
-    filterRange = {start:s, end:e};
-    renderHistory();
-  });
-  document.getElementById('resetFilter').addEventListener('click', ()=>{
-    filterRange = null;
-    document.getElementById('filterStart').value='';
-    document.getElementById('filterEnd').value='';
-    renderHistory();
-  });
+      document.getElementById('applyFilter').addEventListener('click', () => {
+        const s = document.getElementById('filterStart').value;
+        const e = document.getElementById('filterEnd').value;
+        if (!s || !e) { toast('Pick both dates'); return; }
+        filterRange = { start: s, end: e };
+        renderHistory();
+      });
+      document.getElementById('resetFilter').addEventListener('click', () => {
+        filterRange = null;
+        document.getElementById('filterStart').value = '';
+        document.getElementById('filterEnd').value = '';
+        renderHistory();
+      });
 
-  // Row click to load into form / delete
-  document.addEventListener('click', function(ev){
-    const del = ev.target.closest('[data-delete]');
-    if(del){
-      ev.stopPropagation();
-      const iso = del.getAttribute('data-delete');
-      delete entries[iso];
-      saveEntries(entries)
-        .then(()=>{
-          toast(`Deleted ${fmtDisplayDate(iso)}`);
-          renderAll();
-        })
-        .catch(err=>{
-          console.error(err);
-          toast('Delete failed — data was not confirmed as persistent');
-        });
-      return;
-    }
-    const row = ev.target.closest('.editable-row');
-    if(row){
-      loadDateIntoForm(row.getAttribute('data-date'));
-    }
-  });
+      // Row click to load into form / delete
+      document.addEventListener('click', function (ev) {
+        const del = ev.target.closest('[data-delete]');
+        if (del) {
+          ev.stopPropagation();
+          const iso = del.getAttribute('data-delete');
+          delete entries[iso];
+          saveEntries(entries)
+            .then(() => {
+              toast(`Deleted ${fmtDisplayDate(iso)}`);
+              renderAll();
+            })
+            .catch(err => {
+              console.error(err);
+              toast('Delete failed');
+            });
+          return;
+        }
+        const row = ev.target.closest('.editable-row');
+        if (row) {
+          loadDateIntoForm(row.getAttribute('data-date'));
+        }
+      });
 
-  // ---------- Settings ----------
-  function renderSettings(){
-    const grid = document.getElementById('settingsGrid');
-    grid.innerHTML = MACROS.map(m=>{
-      const r = settings[m.key] || {goal:'',min:'',max:''};
-      return `<div class="settings-card" data-macro="${m.key}">
+      // ---------- Settings ----------
+      function renderSettings() {
+        const grid = document.getElementById('settingsGrid');
+        grid.innerHTML = MACROS.map(m => {
+          const r = settings[m.key] || { goal: '', min: '', max: '' };
+          return `<div class="settings-card" data-macro="${m.key}">
         <div class="macro-name" style="color:var(${m.color})">${m.label} (${m.unit})</div>
         <div class="mini-fields">
           <div class="field"><label>Goal</label><input type="number" class="s-goal" value="${r.goal}"></div>
@@ -705,166 +1031,180 @@
           <div class="field"><label>Max</label><input type="number" class="s-max" value="${r.max}"></div>
         </div>
       </div>`;
-    }).join('');
-  }
+        }).join('');
 
-  document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
-    document.querySelectorAll('.settings-card').forEach(card=>{
-      const key = card.getAttribute('data-macro');
-      settings[key] = {
-        goal: parseFloat(card.querySelector('.s-goal').value) || 0,
-        min: parseFloat(card.querySelector('.s-min').value) || 0,
-        max: parseFloat(card.querySelector('.s-max').value) || 0,
-      };
-    });
-    saveSettings(settings);
-    toast('Goals saved');
-    renderAll();
-  });
-
-  // ---------- Charts ----------
-  let calChart, macroChart;
-  function renderCharts(){
-    if(typeof Chart === 'undefined'){
-      ['calChart','macroChart'].forEach(id=>{
-        const c = document.getElementById(id);
-        if(c && c.parentElement && !c.parentElement.querySelector('.chart-fallback')){
-          const p = document.createElement('div');
-          p.className = 'chart-fallback empty-state';
-          p.textContent = 'Charts couldn\'t load (no connection to the chart library). Everything else still works.';
-          c.parentElement.appendChild(p);
-          c.style.display = 'none';
-        }
-      });
-      return;
-    }
-    const dates = sortedDates(false).slice(-14); // last 14, ascending
-    const labels = dates.map(d=>d.slice(5));
-    const calData = dates.map(d=> entries[d].calories === '' ? null : entries[d].calories);
-    const goalLine = dates.map(()=> settings.calories.goal);
-
-    const ctx1 = document.getElementById('calChart').getContext('2d');
-    if(calChart) calChart.destroy();
-    calChart = new Chart(ctx1, {
-      type:'line',
-      data:{ labels, datasets:[
-        {label:'Calories', data:calData, borderColor:'#3a3733', backgroundColor:'rgba(58,55,51,.06)', tension:.3, spanGaps:true, pointRadius:3, fill:true},
-        {label:'Goal', data:goalLine, borderColor:'#2f8f5f', borderDash:[5,5], pointRadius:0, borderWidth:1.5},
-      ]},
-      options:{
-        responsive:true,
-        plugins:{legend:{labels:{color:'#756f66', font:{family:'JetBrains Mono', size:11}}}},
-        scales:{
-          x:{ticks:{color:'#756f66', font:{family:'JetBrains Mono', size:10}}, grid:{color:'#e1ddd4'}},
-          y:{ticks:{color:'#756f66', font:{family:'JetBrains Mono', size:10}}, grid:{color:'#e1ddd4'}}
+        const tokenInput = document.getElementById('ghTokenInput');
+        if (tokenInput) {
+          tokenInput.value = localStorage.getItem(GH_TOKEN_KEY) || '';
         }
       }
-    });
 
-    // 7-day average macro split
-    const last7 = sortedDates(false).slice(-7);
-    function avg(key){
-      const vals = last7.map(d=>entries[d][key]).filter(v=>v!==undefined && v!=='' && v!==null);
-      if(vals.length===0) return 0;
-      return Math.round(vals.reduce((a,b)=>a+Number(b),0)/vals.length);
-    }
-    const carbAvg = avg('carbs'), fatAvg = avg('fat'), proteinAvg = avg('protein');
-
-    const ctx2 = document.getElementById('macroChart').getContext('2d');
-    if(macroChart) macroChart.destroy();
-    macroChart = new Chart(ctx2, {
-      type:'doughnut',
-      data:{
-        labels:['Carbs','Fat','Protein'],
-        datasets:[{ data:[carbAvg, fatAvg, proteinAvg], backgroundColor:['#2f6fa8','#b3791d','#b83f57'], borderColor:'#ffffff', borderWidth:2 }]
-      },
-      options:{
-        responsive:true,
-        plugins:{legend:{position:'bottom', labels:{color:'#756f66', font:{family:'JetBrains Mono', size:11}}}}
-      }
-    });
-  }
-
-  // ---------- CSV export / import ----------
-  function toCSVDate(iso){ return iso; }
-
-  document.getElementById('exportBtn').addEventListener('click', ()=>{
-    const csv = csvFromEntries(entries);
-    const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `macro-tracker-${todayISO()}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast('Exported CSV');
-  });
-
-  // Lets the user select one real CSV file. Once connected, every save in
-  // the app attempts to update that exact file automatically.
-  document.getElementById('connectCSVBtn').addEventListener('click', chooseCSVFile);
-
-  document.getElementById('importInput').addEventListener('change', function(ev){
-    const file = ev.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e){
-      try{
-        const lines = e.target.result.split(/\r?\n/).filter(l=>l.trim().length);
-        let count = 0;
-        lines.slice(1).forEach(line=>{
-          const [date, cal, carb, fat, protein] = line.split(',');
-          if(!date) return;
-          const iso = date.trim().slice(0,10);
-          entries[iso] = {
-            calories: cal ? parseFloat(cal) : '',
-            carbs: carb ? parseFloat(carb) : '',
-            fat: fat ? parseFloat(fat) : '',
-            protein: protein ? parseFloat(protein) : '',
+      document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+        document.querySelectorAll('.settings-card').forEach(card => {
+          const key = card.getAttribute('data-macro');
+          settings[key] = {
+            goal: parseFloat(card.querySelector('.s-goal').value) || 0,
+            min: parseFloat(card.querySelector('.s-min').value) || 0,
+            max: parseFloat(card.querySelector('.s-max').value) || 0,
           };
-          count++;
         });
-        saveEntries(entries)
-          .then(()=>{
-            toast(`Imported ${count} rows`);
-            renderAll();
-          })
-          .catch(err=>{
-            console.error(err);
-            toast('Import failed — data was not confirmed as persistent');
-          });
-      }catch(err){
-        toast('Import failed — check CSV format');
+        saveSettings(settings);
+        toast('Goals saved');
+        renderAll();
+      });
+
+      const saveGHTokenBtn = document.getElementById('saveGHTokenBtn');
+      if (saveGHTokenBtn) {
+        saveGHTokenBtn.addEventListener('click', () => {
+          const val = document.getElementById('ghTokenInput').value.trim();
+          if (val) {
+            localStorage.setItem(GH_TOKEN_KEY, val);
+            toast('GitHub Token saved');
+            syncToGitHub(csvFromEntries(entries));
+          } else {
+            localStorage.removeItem(GH_TOKEN_KEY);
+            toast('GitHub Token cleared');
+          }
+        });
       }
-      ev.target.value = '';
-    };
-    reader.readAsText(file);
-  });
 
-  function renderAll(){
-    renderTodayStrip();
-    renderRecent();
-    renderHistory();
-    renderSettings();
-    renderCharts();
-  }
+      const clearGHTokenBtn = document.getElementById('clearGHTokenBtn');
+      if (clearGHTokenBtn) {
+        clearGHTokenBtn.addEventListener('click', () => {
+          document.getElementById('ghTokenInput').value = '';
+          localStorage.removeItem(GH_TOKEN_KEY);
+          toast('GitHub Token cleared');
+        });
+      }
 
-  async function initPersistence(){
-    try{
-      // Restore durable history before allowing normal editing.
-      entries = await restoreEntries();
-      renderAll();
-    }catch(err){
-      console.error('Persistence initialization failed:', err);
-      toast('Persistent storage unavailable — export a CSV backup');
-      renderAll();
-    }
-  }
+      // ---------- Charts ----------
+      let calChart, macroChart;
+      function renderCharts() {
+        if (typeof Chart === 'undefined') {
+          ['calChart', 'macroChart'].forEach(id => {
+            const c = document.getElementById(id);
+            if (c && c.parentElement && !c.parentElement.querySelector('.chart-fallback')) {
+              const p = document.createElement('div');
+              p.className = 'chart-fallback empty-state';
+              p.textContent = 'Charts couldn\'t load (no connection to the chart library). Everything else still works.';
+              c.parentElement.appendChild(p);
+              c.style.display = 'none';
+            }
+          });
+          return;
+        }
+        const dates = sortedDates(false).slice(-14);
+        const labels = dates.map(d => d.slice(5));
+        const calData = dates.map(d => entries[d].calories === '' ? null : entries[d].calories);
+        const goalLine = dates.map(() => settings.calories.goal);
 
-  initPersistence();
-})();
-</script>
+        const ctx1 = document.getElementById('calChart').getContext('2d');
+        if (calChart) calChart.destroy();
+        calChart = new Chart(ctx1, {
+          type: 'line',
+          data: {
+            labels, datasets: [
+              { label: 'Calories', data: calData, borderColor: '#3a3733', backgroundColor: 'rgba(58,55,51,.06)', tension: .3, spanGaps: true, pointRadius: 3, fill: true },
+              { label: 'Goal', data: goalLine, borderColor: '#2f8f5f', borderDash: [5, 5], pointRadius: 0, borderWidth: 1.5 },
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: '#756f66', font: { family: 'JetBrains Mono', size: 11 } } } },
+            scales: {
+              x: { ticks: { color: '#756f66', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#e1ddd4' } },
+              y: { ticks: { color: '#756f66', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#e1ddd4' } }
+            }
+          }
+        });
+
+        const last7 = sortedDates(false).slice(-7);
+        function avg(key) {
+          const vals = last7.map(d => entries[d][key]).filter(v => v !== undefined && v !== '' && v !== null);
+          if (vals.length === 0) return 0;
+          return Math.round(vals.reduce((a, b) => a + Number(b), 0) / vals.length);
+        }
+        const carbAvg = avg('carbs'), fatAvg = avg('fat'), proteinAvg = avg('protein');
+
+        const ctx2 = document.getElementById('macroChart').getContext('2d');
+        if (macroChart) macroChart.destroy();
+        macroChart = new Chart(ctx2, {
+          type: 'doughnut',
+          data: {
+            labels: ['Carbs', 'Fat', 'Protein'],
+            datasets: [{ data: [carbAvg, fatAvg, proteinAvg], backgroundColor: ['#2f6fa8', '#b3791d', '#b83f57'], borderColor: '#ffffff', borderWidth: 2 }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom', labels: { color: '#756f66', font: { family: 'JetBrains Mono', size: 11 } } } }
+          }
+        });
+      }
+
+      // ---------- CSV export / import ----------
+      document.getElementById('exportBtn').addEventListener('click', () => {
+        const csv = csvFromEntries(entries);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `macro-tracker-${todayISO()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('Exported CSV');
+      });
+
+      document.getElementById('connectCSVBtn').addEventListener('click', chooseCSVFile);
+
+      document.getElementById('importInput').addEventListener('change', function (ev) {
+        const file = ev.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            const imported = entriesFromCSV(e.target.result);
+            const count = Object.keys(imported).length;
+            entries = Object.assign({}, entries, imported);
+            saveEntries(entries)
+              .then(() => {
+                toast(`Imported ${count} rows`);
+                renderAll();
+              })
+              .catch(err => {
+                console.error(err);
+                toast('Import failed');
+              });
+          } catch (err) {
+            toast('Import failed — check CSV format');
+          }
+          ev.target.value = '';
+        };
+        reader.readAsText(file);
+      });
+
+      function renderAll() {
+        renderTodayStrip();
+        renderRecent();
+        renderHistory();
+        renderSettings();
+        renderCharts();
+      }
+
+      async function initPersistence() {
+        try {
+          entries = await restoreEntries();
+          renderAll();
+        } catch (err) {
+          console.error('Persistence initialization failed:', err);
+          renderAll();
+        }
+      }
+
+      initPersistence();
+    })();
+  </script>
 </body>
+
 </html>
