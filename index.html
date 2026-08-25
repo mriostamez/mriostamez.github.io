@@ -601,16 +601,6 @@
       <div class="panel">
         <div class="settings-grid" id="settingsGrid"></div>
         <div style="margin-top:16px;"><button class="primary" id="saveSettingsBtn">Save goals</button></div>
-
-        <div style="margin-top:24px; border-top:1px solid var(--line); padding-top:16px;">
-          <h3 style="font-size:14px; font-family:var(--display); margin:0 0 6px;">GitHub Pages Multi-Device CSV Sync</h3>
-          <p class="hint" style="margin-bottom:12px;">Enter a GitHub Access Token with <code>repo</code> access to automatically commit <code>data.csv</code> updates to your GitHub Pages repository from any device or browser.</p>
-          <!-- <div style="display:flex; gap:10px; max-width:540px; align-items:center; flex-wrap:wrap;">
-            <input type="password" id="ghTokenInput" placeholder="GitHub Access Token (ghp_...)" style="flex:1; min-width:200px; background:var(--panel-raised); border:1px solid var(--line); color:var(--text); padding:9px 11px; border-radius:7px; font-family:var(--mono); font-size:13px;">
-            <button type="button" id="saveGHTokenBtn">Save Token</button>
-            <button type="button" class="ghost" id="clearGHTokenBtn">Clear Token</button> -->
-          </div>
-        </div>
       </div>
     </section>
 
@@ -680,7 +670,7 @@
               const getData = await getRes.json();
               sha = getData.sha;
             }
-          } catch (e) {}
+          } catch (e) { }
 
           const base64Content = btoa(unescape(encodeURIComponent(csvContent)));
 
