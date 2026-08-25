@@ -16,11 +16,21 @@ This repository contains a Model Context Protocol (MCP) Server ([`mcp-server.js`
 
 ---
 
-## ⚙️ Configuration for Hermes / MCP Clients
+## ⚙️ Configuration for Hermes Agent
 
-### Hermes / Claude / Antigravity MCP Config Snippet
+### Option 1: YAML Config (`~/.hermes/config.yaml`)
 
-Add this server to your Hermes agent configuration (e.g. `mcp_config.json` or `config.json`):
+Add this under the `mcp_servers` section of your `/Users/DevAccount/.hermes/config.yaml`:
+
+```yaml
+mcp_servers:
+  daily_macro_tracker:
+    command: node
+    args:
+      - /Users/DevAccount/Documents/dev/mriostamez.github.io/mcp-server.js
+```
+
+### Option 2: JSON Config (`mcp_config.json`)
 
 ```json
 {
