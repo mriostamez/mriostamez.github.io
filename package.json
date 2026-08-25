@@ -1,0 +1,13 @@
+{
+  "name": "daily-macro-tracker",
+  "version": "1.0.0",
+  "description": "Daily Macro Tracker with local CSV storage and MCP Server interface for Hermes agent",
+  "main": "mcp-server.js",
+  "type": "module",
+  "scripts": {
+    "mcp": "node mcp-server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.5.0"
+  }
+}
