@@ -485,7 +485,6 @@
     <header class="hero">
       <div class="eyebrow">MANUEL RIOS TAMEZ</div>
       <h1 id="heroTitle">Daily calorie &amp; macro tracker</h1>
-      <div class="today-strip" id="todayStrip"></div>
     </header>
 
     <!-- 1. Entry form -->
@@ -605,7 +604,8 @@
           <div class="macro-name" style="color:var(--carb)">GitHub sync (optional)</div>
           <p class="hint">Paste a GitHub token with <code>repo</code> scope to push edits back to the repo's
             <code>data.csv</code>. Stored only in this browser's localStorage. Without it, changes save locally but
-            won't publish to the live site.</p>
+            won't publish to the live site.
+          </p>
           <div class="mini-fields">
             <div class="field" style="flex:3;"><input type="password" id="ghTokenInput" placeholder="ghp_..."
                 autocomplete="off"></div>
@@ -927,26 +927,6 @@
             toast('Save failed');
           });
       });
-
-      // ---------- Today strip ----------
-      function renderTodayStrip() {
-        const iso = todayISO();
-        const e = entries[iso] || {};
-        const strip = document.getElementById('todayStrip');
-        strip.innerHTML = MACROS.map(m => {
-          const val = e[m.key];
-          const goal = settings[m.key] ? settings[m.key].goal : null;
-          const pct = (val && goal) ? Math.min(100, Math.round((val / goal) * 100)) : 0;
-          const status = statusFor(m.key, val);
-          const barColor = status === 'good' ? 'var(--good)' : status === 'bad' ? 'var(--bad)' : status === 'warn' ? 'var(--warn)' : 'var(--line)';
-          return `<div class="gauge ${m.key === 'calories' ? 'kcal' : m.key}">
-        <div class="label">${m.label} today</div>
-        <div class="value">${val !== undefined && val !== '' ? val : '—'}<span style="font-size:12px;color:var(--text-dim);"> ${m.unit}</span></div>
-        <div class="sub">Goal ${goal ?? '—'} ${m.unit}${val !== undefined && val !== '' && goal ? ' · ' + pct + '%' : ''}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${barColor};"></div></div>
-      </div>`;
-        }).join('');
-      }
 
       // ---------- Recent 7-day table ----------
       function sortedDates(desc = true) {
@@ -1271,7 +1251,6 @@
       });
 
       function renderAll() {
-        renderTodayStrip();
         renderRecent();
         renderHistory();
         renderSettings();
