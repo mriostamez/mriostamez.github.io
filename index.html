@@ -601,6 +601,20 @@
       </div>
       <div class="panel">
         <div class="settings-grid" id="settingsGrid"></div>
+        <div class="settings-card" style="margin-top:16px;">
+          <div class="macro-name" style="color:var(--carb)">GitHub sync (optional)</div>
+          <p class="hint">Paste a GitHub token with <code>repo</code> scope to push edits back to the repo's
+            <code>data.csv</code>. Stored only in this browser's localStorage. Without it, changes save locally but
+            won't publish to the live site.</p>
+          <div class="mini-fields">
+            <div class="field" style="flex:3;"><input type="password" id="ghTokenInput" placeholder="ghp_..."
+                autocomplete="off"></div>
+            <div class="field" style="flex:1; display:flex; gap:6px; align-items:flex-end;">
+              <button id="saveGHTokenBtn" class="primary">Save token</button>
+              <button id="clearGHTokenBtn" class="ghost">Clear</button>
+            </div>
+          </div>
+        </div>
         <div style="margin-top:16px;"><button class="primary" id="saveSettingsBtn">Save goals</button></div>
       </div>
     </section>
@@ -724,21 +738,23 @@
       }
 
       async function restoreEntries() {
+        const local = loadEntries();
         try {
           const res = await fetch(`./${CSV_FILE_PATH}?t=${Date.now()}`);
           if (res.ok) {
             const text = await res.text();
-            const loaded = entriesFromCSV(text);
-            if (Object.keys(loaded).length > 0) {
-              try { localStorage.setItem(STORAGE_KEY, JSON.stringify(loaded)); } catch (e) { }
-              return loaded;
-            }
+            const repo = entriesFromCSV(text);
+            // Local edits win; repo fills in dates the local copy lacks.
+            // Prevents the committed CSV from wiping unsynced browser edits on reload.
+            const merged = Object.assign({}, repo, local);
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch (e) { }
+            return merged;
           }
         } catch (err) {
           console.warn('Failed to fetch data.csv from repo:', err);
         }
 
-        return loadEntries();
+        return local;
       }
 
       async function chooseCSVFile() {
@@ -1025,7 +1041,7 @@
         }).join('');
 
         const tokenInput = document.getElementById('ghTokenInput');
-        if (tokenInput) {
+        if (tokenInput && document.activeElement !== tokenInput) {
           tokenInput.value = localStorage.getItem(GH_TOKEN_KEY) || '';
         }
       }
