@@ -197,9 +197,65 @@
       align-items: end;
     }
 
+    .form-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
     @media (max-width:760px) {
       form.entry-form {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: 1fr;
+      }
+
+      .form-actions {
+        justify-content: stretch;
+      }
+
+      .form-actions button {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+
+      /* Full-history filter controls: stack and align on mobile */
+      .filter-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        align-items: stretch;
+      }
+
+      .filter-row .field {
+        min-width: 0;
+      }
+
+      .filter-row button {
+        width: 100%;
+      }
+
+      /* Section action buttons: equal-width, wrap cleanly on mobile */
+      .section-head {
+        align-items: flex-start;
+      }
+
+      .section-head .actions {
+        width: 100%;
+      }
+
+      .section-head .actions button,
+      .section-head .actions .file-label {
+        flex: 1 1 0;
+        min-width: 0;
+        text-align: center;
+      }
+
+      .section-head .actions .file-label {
+        display: flex;
+      }
+
+      .section-head .actions .file-label button {
+        width: 100%;
       }
     }
 
@@ -488,7 +544,6 @@
     #clearFormBtn {
       border-color: var(--bad);
       background-color: #b83f57;
-
       color: var(--panel);
     }
 
