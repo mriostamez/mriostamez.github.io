@@ -1,3 +1,9 @@
+# Custom
+HERMES_MCP.md
+mcp-server.js
+package.json
+package-lock.json
+
 # Dependencies
 node_modules/
 .pnpm-store/
