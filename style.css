@@ -285,6 +285,13 @@
       border-color: var(--carb);
     }
 
+    /* Date inputs render taller than number inputs by default (calendar glyph).
+       Pin height + line-height so Date matches the other fields on all screens. */
+    .field input[type="date"] {
+      height: 39px;
+      line-height: 1.3;
+    }
+
     .estimate-line {
       grid-column: 1/-1;
       font-size: 12px;
