@@ -467,3 +467,19 @@
       color: var(--text-dim);
       margin-top: 4px;
     }
+
+    .github-sync-card {
+      display: none;
+    }
+
+    .app-footer {
+      max-width: 1080px;
+      margin: 40px auto 0;
+      padding: 16px 24px 0;
+      border-top: 1px solid var(--line);
+      text-align: right;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: .06em;
+      color: var(--text-dim);
+    }

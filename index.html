@@ -35,7 +35,7 @@
           <div class="field"><label for="f-protein">Protein (g)</label><input type="number" id="f-protein" min="0"
               step="1" placeholder="185"></div>
           <div class="estimate-line" id="estimateLine"></div>
-          <div style="grid-column:1/-1; display:flex; gap:10px;">
+          <div style="grid-column:1/-1; display:flex; gap:10px; justify-content:flex-end;">
             <button type="submit" class="primary">Save day</button>
             <button type="button" class="ghost" id="clearFormBtn">Clear</button>
           </div>
@@ -131,7 +131,7 @@
       </div>
       <div class="panel">
         <div class="settings-grid" id="settingsGrid"></div>
-        <div class="settings-card" style="margin-top:16px;">
+        <div class="settings-card github-sync-card" style="margin-top:16px;">
           <div class="macro-name" style="color:var(--carb)">GitHub sync (optional)</div>
           <p class="hint">Paste a GitHub token with <code>repo</code> scope to push edits back to the repo's
             <code>data.csv</code>. Stored only in this browser's localStorage. Without it, changes save locally but
@@ -153,6 +153,8 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <footer class="app-footer">v0828261037</footer>
 
   <script src="app.js"></script>
 </body>
