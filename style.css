@@ -271,6 +271,7 @@
 
     .field input {
       width: 100%;
+      height: 39px;
       background: var(--panel-raised);
       border: 1px solid var(--line);
       color: var(--text);
@@ -285,10 +286,12 @@
       border-color: var(--carb);
     }
 
-    /* Date inputs render taller than number inputs by default (calendar glyph).
-       Pin height + line-height so Date matches the other fields on all screens. */
+    /* iOS Safari ignores height on date inputs unless appearance is stripped,
+       so it falls back to a taller native min-height. appearance:none + the
+       shared 39px height from .field input makes Date match the other fields. */
     .field input[type="date"] {
-      height: 39px;
+      -webkit-appearance: none;
+      appearance: none;
       line-height: 1.3;
     }
 
