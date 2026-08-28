@@ -483,3 +483,16 @@
       letter-spacing: .06em;
       color: var(--text-dim);
     }
+
+    /* CUSTOM */
+    #clearFormBtn {
+      border-color: var(--bad);
+      background-color: #b83f57;
+
+      color: var(--panel);
+    }
+
+    #clearFormBtn:hover {
+      border-color: #b83f57;
+      background-color: #b83f57aa;
+    }
