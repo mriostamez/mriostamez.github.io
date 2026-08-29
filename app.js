@@ -401,7 +401,7 @@
       }
 
       document.getElementById('saveSettingsBtn').addEventListener('click', () => {
-        document.querySelectorAll('.settings-card').forEach(card => {
+        document.querySelectorAll('.settings-card[data-macro]').forEach(card => {
           const key = card.getAttribute('data-macro');
           settings[key] = {
             goal: parseFloat(card.querySelector('.s-goal').value) || 0,
