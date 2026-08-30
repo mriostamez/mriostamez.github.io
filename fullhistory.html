@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Macro Tracker — Full history</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"
+    onerror="window.__chartLoadFailed=true"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <nav class="site-nav">
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="fullhistory.html" class="nav-link active">Full history</a>
+  </nav>
+
+  <div class="wrap">
+
+    <header class="hero">
+      <div class="eyebrow">MANUEL RIOS TAMEZ</div>
+      <h1 id="heroTitle">Full history</h1>
+    </header>
+
+    <!-- Full history + filter -->
+    <section id="history">
+      <div class="section-head">
+        <h2><span class="idx">01</span> Full history</h2>
+        <div class="actions">
+          <button id="exportBtn">Export CSV</button>
+          <button id="connectCSVBtn">Connect persistent CSV</button>
+          <label class="file-label"><button type="button"
+              onclick="document.getElementById('importInput').click()">Import CSV</button></label>
+          <input type="file" id="importInput" accept=".csv">
+        </div>
+      </div>
+      <div class="panel">
+        <div class="filter-row">
+          <div class="field"><label for="filterStart">From</label><input type="date" id="filterStart"></div>
+          <div class="field"><label for="filterEnd">To</label><input type="date" id="filterEnd"></div>
+          <button id="applyFilter">Filter</button>
+          <button class="ghost" id="resetFilter">Reset</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table id="historyTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Calories</th>
+                <th>Carbs</th>
+                <th>Fat</th>
+                <th>Protein</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="historyEmpty" style="display:none;">No entries in range.</div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <footer class="app-footer">v0830261616</footer>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

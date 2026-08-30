@@ -560,6 +560,37 @@
     }
 
     /* CUSTOM */
+    .site-nav {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 16px 24px 0;
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-link {
+      font-family: var(--mono);
+      font-size: 13px;
+      letter-spacing: .04em;
+      text-decoration: none;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+
+    .nav-link:hover {
+      border-color: var(--carb);
+      color: var(--text);
+    }
+
+    .nav-link.active {
+      background: var(--carb);
+      border-color: var(--carb);
+      color: var(--panel);
+    }
+
     #clearFormBtn {
       border-color: var(--bad);
       background-color: #b83f57;

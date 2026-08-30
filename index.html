@@ -11,6 +11,11 @@
 </head>
 
 <body>
+  <nav class="site-nav">
+    <a href="index.html" class="nav-link active">Dashboard</a>
+    <a href="fullhistory.html" class="nav-link">Full history</a>
+  </nav>
+
   <div class="wrap">
 
     <header class="hero">
@@ -18,114 +23,10 @@
       <h1 id="heroTitle">Daily calorie &amp; macro tracker</h1>
     </header>
 
-    <!-- 1. Entry form -->
-    <section id="entry">
-      <div class="section-head">
-        <h2><span class="idx">01</span> Log a day</h2>
-      </div>
-      <div class="panel">
-        <form class="entry-form" id="entryForm">
-          <div class="field"><label for="f-date">Date</label><input type="date" id="f-date" required></div>
-          <div class="field"><label for="f-cal">Calories (kcal)</label><input type="number" id="f-cal" min="0" step="1"
-              placeholder="2000"></div>
-          <div class="field"><label for="f-carb">Carbs (g)</label><input type="number" id="f-carb" min="0" step="1"
-              placeholder="180"></div>
-          <div class="field"><label for="f-fat">Fat (g)</label><input type="number" id="f-fat" min="0" step="1"
-              placeholder="60"></div>
-          <div class="field"><label for="f-protein">Protein (g)</label><input type="number" id="f-protein" min="0"
-              step="1" placeholder="185"></div>
-          <div class="estimate-line" id="estimateLine"></div>
-          <div class="form-actions">
-            <button type="submit" class="primary">Save day</button>
-            <button type="button" class="ghost" id="clearFormBtn">Clear</button>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <!-- 2. 7-day history -->
-    <section id="recent">
-      <div class="section-head">
-        <h2><span class="idx">02</span> Last 7 days</h2>
-      </div>
-      <div class="panel" style="padding:0; overflow-x:auto;">
-        <table id="recentTable">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Calories</th>
-              <th>Carbs</th>
-              <th>Fat</th>
-              <th>Protein</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="recentBody"></tbody>
-        </table>
-        <div class="empty-state" id="recentEmpty" style="display:none;">No entries yet — log today above to start your
-          history.</div>
-      </div>
-    </section>
-
-    <!-- 3. Reports & graphs -->
-    <section id="reports">
-      <div class="section-head">
-        <h2><span class="idx">03</span> Trends vs. goal</h2>
-      </div>
-      <div class="charts-grid">
-        <div class="chart-box">
-          <h3>Calories — last 14 entries</h3>
-          <canvas id="calChart" height="140"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>Macro split — 7-day average (g)</h3>
-          <canvas id="macroChart" height="140"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <!-- 4. Historical search & filter -->
-    <section id="history">
-      <div class="section-head">
-        <h2><span class="idx">04</span> Full history</h2>
-        <div class="actions">
-          <button id="exportBtn">Export CSV</button>
-          <button id="connectCSVBtn">Connect persistent CSV</button>
-          <label class="file-label"><button type="button"
-              onclick="document.getElementById('importInput').click()">Import CSV</button></label>
-          <input type="file" id="importInput" accept=".csv">
-        </div>
-      </div>
-      <div class="panel">
-        <div class="filter-row">
-          <div class="field"><label for="filterStart">From</label><input type="date" id="filterStart"></div>
-          <div class="field"><label for="filterEnd">To</label><input type="date" id="filterEnd"></div>
-          <button id="applyFilter">Filter</button>
-          <button class="ghost" id="resetFilter">Reset</button>
-        </div>
-        <div style="overflow-x:auto;">
-          <table id="historyTable">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Calories</th>
-                <th>Carbs</th>
-                <th>Fat</th>
-                <th>Protein</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="historyBody"></tbody>
-          </table>
-        </div>
-        <div class="empty-state" id="historyEmpty" style="display:none;">No entries in range.</div>
-      </div>
-    </section>
-
-    <!-- 5. Settings / thresholds -->
+    <!-- 1. Goals & ranges -->
     <section id="settings">
       <div class="section-head">
-        <h2><span class="idx">05</span> Goals &amp; ranges</h2>
+        <h2><span class="idx">01</span> Goals &amp; ranges</h2>
         <div class="hint">Min/Max set the green zone on badges and charts. Calorie goal auto-fills from macros (4·carb +
           4·protein + 9·fat) — edit any value to override.</div>
       </div>
@@ -150,11 +51,77 @@
       </div>
     </section>
 
+    <!-- 2. Log a day -->
+    <section id="entry">
+      <div class="section-head">
+        <h2><span class="idx">02</span> Log a day</h2>
+      </div>
+      <div class="panel">
+        <form class="entry-form" id="entryForm">
+          <div class="field"><label for="f-date">Date</label><input type="date" id="f-date" required></div>
+          <div class="field"><label for="f-cal">Calories (kcal)</label><input type="number" id="f-cal" min="0" step="1"
+              placeholder="2000"></div>
+          <div class="field"><label for="f-carb">Carbs (g)</label><input type="number" id="f-carb" min="0" step="1"
+              placeholder="180"></div>
+          <div class="field"><label for="f-fat">Fat (g)</label><input type="number" id="f-fat" min="0" step="1"
+              placeholder="60"></div>
+          <div class="field"><label for="f-protein">Protein (g)</label><input type="number" id="f-protein" min="0"
+              step="1" placeholder="185"></div>
+          <div class="estimate-line" id="estimateLine"></div>
+          <div class="form-actions">
+            <button type="submit" class="primary">Save day</button>
+            <button type="button" class="ghost" id="clearFormBtn">Clear</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- 3. 7-day history -->
+    <section id="recent">
+      <div class="section-head">
+        <h2><span class="idx">03</span> Last 7 days</h2>
+      </div>
+      <div class="panel" style="padding:0; overflow-x:auto;">
+        <table id="recentTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Calories</th>
+              <th>Carbs</th>
+              <th>Fat</th>
+              <th>Protein</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="recentBody"></tbody>
+        </table>
+        <div class="empty-state" id="recentEmpty" style="display:none;">No entries yet — log today above to start your
+          history.</div>
+      </div>
+    </section>
+
+    <!-- 4. Reports & graphs -->
+    <section id="reports">
+      <div class="section-head">
+        <h2><span class="idx">04</span> Trends vs. goal</h2>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h3>Calories — last 14 entries</h3>
+          <canvas id="calChart" height="140"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Macro split — 7-day average (g)</h3>
+          <canvas id="macroChart" height="140"></canvas>
+        </div>
+      </div>
+    </section>
+
   </div>
 
   <div class="toast" id="toast"></div>
 
-  <footer class="app-footer">v0829262115</footer>
+  <footer class="app-footer">v0830261616</footer>
 
   <script src="app.js"></script>
 </body>

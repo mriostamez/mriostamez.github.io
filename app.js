@@ -238,14 +238,20 @@
         return `<span class="badge ${cls}">${value}</span>`;
       }
 
+      function $(id) { return document.getElementById(id); }
+
       // ---------- Entry form ----------
-      const form = document.getElementById('entryForm');
-      const dateInput = document.getElementById('f-date');
-      const calInput = document.getElementById('f-cal');
-      const carbInput = document.getElementById('f-carb');
-      const fatInput = document.getElementById('f-fat');
-      const proteinInput = document.getElementById('f-protein');
-      const estimateLine = document.getElementById('estimateLine');
+      const form = $('entryForm');
+      const dateInput = $('f-date');
+      const calInput = $('f-cal');
+      const carbInput = $('f-carb');
+      const fatInput = $('f-fat');
+      const proteinInput = $('f-protein');
+      const estimateLine = $('estimateLine');
+
+      // Entry form only exists on the dashboard page; guard so this script is safe on fullhistory.html too.
+      const hasEntryForm = !!(form && dateInput);
+      if (hasEntryForm) {
 
       dateInput.value = todayISO();
 
@@ -302,6 +308,8 @@
           });
       });
 
+      }
+
       // ---------- Recent 7-day table ----------
       function sortedDates(desc = true) {
         return Object.keys(entries).sort((a, b) => desc ? (a < b ? 1 : -1) : (a < b ? -1 : 1));
@@ -319,9 +327,10 @@
       }
 
       function renderRecent() {
+        const body = $('recentBody');
+        if (!body) return; // only on dashboard
         const dates = sortedDates().slice(0, 7);
-        const body = document.getElementById('recentBody');
-        const empty = document.getElementById('recentEmpty');
+        const empty = $('recentEmpty');
         if (dates.length === 0) { body.innerHTML = ''; empty.style.display = 'block'; return; }
         empty.style.display = 'none';
         body.innerHTML = dates.map(iso => rowHTML(iso, entries[iso])).join('');
@@ -330,30 +339,37 @@
       // ---------- Full history + filter ----------
       let filterRange = null;
       function renderHistory() {
+        const body = $('historyBody');
+        if (!body) return; // only on fullhistory.html
         let dates = sortedDates();
         if (filterRange) {
           dates = dates.filter(d => d >= filterRange.start && d <= filterRange.end);
         }
-        const body = document.getElementById('historyBody');
-        const empty = document.getElementById('historyEmpty');
+        const empty = $('historyEmpty');
         if (dates.length === 0) { body.innerHTML = ''; empty.style.display = 'block'; return; }
         empty.style.display = 'none';
         body.innerHTML = dates.map(iso => rowHTML(iso, entries[iso])).join('');
       }
 
-      document.getElementById('applyFilter').addEventListener('click', () => {
-        const s = document.getElementById('filterStart').value;
-        const e = document.getElementById('filterEnd').value;
-        if (!s || !e) { toast('Pick both dates'); return; }
-        filterRange = { start: s, end: e };
-        renderHistory();
-      });
-      document.getElementById('resetFilter').addEventListener('click', () => {
-        filterRange = null;
-        document.getElementById('filterStart').value = '';
-        document.getElementById('filterEnd').value = '';
-        renderHistory();
-      });
+      const applyFilterBtn = $('applyFilter');
+      if (applyFilterBtn) {
+        applyFilterBtn.addEventListener('click', () => {
+          const s = $('filterStart').value;
+          const e = $('filterEnd').value;
+          if (!s || !e) { toast('Pick both dates'); return; }
+          filterRange = { start: s, end: e };
+          renderHistory();
+        });
+      }
+      const resetFilterBtn = $('resetFilter');
+      if (resetFilterBtn) {
+        resetFilterBtn.addEventListener('click', () => {
+          filterRange = null;
+          $('filterStart').value = '';
+          $('filterEnd').value = '';
+          renderHistory();
+        });
+      }
 
       // Row click to load into form / delete
       document.addEventListener('click', function (ev) {
@@ -375,16 +391,17 @@
         }
         const row = ev.target.closest('.editable-row');
         if (row) {
-          loadDateIntoForm(row.getAttribute('data-date'));
+          if (typeof loadDateIntoForm === 'function') loadDateIntoForm(row.getAttribute('data-date'));
         }
       });
 
       // ---------- Settings ----------
       function renderSettings() {
-        const grid = document.getElementById('settingsGrid');
-        grid.innerHTML = MACROS.map(m => {
-          const r = settings[m.key] || { goal: '', min: '', max: '' };
-          return `<div class="settings-card" data-macro="${m.key}">
+        const grid = $('settingsGrid');
+        if (grid) {
+          grid.innerHTML = MACROS.map(m => {
+            const r = settings[m.key] || { goal: '', min: '', max: '' };
+            return `<div class="settings-card" data-macro="${m.key}">
         <div class="macro-name" style="color:var(${m.color})">${m.label} (${m.unit})</div>
         <div class="mini-fields">
           <div class="field"><label>Goal</label><input type="number" class="s-goal" value="${r.goal}"></div>
@@ -392,32 +409,36 @@
           <div class="field"><label>Max</label><input type="number" class="s-max" value="${r.max}"></div>
         </div>
       </div>`;
-        }).join('');
+          }).join('');
+        }
 
-        const tokenInput = document.getElementById('ghTokenInput');
+        const tokenInput = $('ghTokenInput');
         if (tokenInput && document.activeElement !== tokenInput) {
           tokenInput.value = localStorage.getItem(GH_TOKEN_KEY) || '';
         }
       }
 
-      document.getElementById('saveSettingsBtn').addEventListener('click', () => {
-        document.querySelectorAll('.settings-card[data-macro]').forEach(card => {
-          const key = card.getAttribute('data-macro');
-          settings[key] = {
-            goal: parseFloat(card.querySelector('.s-goal').value) || 0,
-            min: parseFloat(card.querySelector('.s-min').value) || 0,
-            max: parseFloat(card.querySelector('.s-max').value) || 0,
-          };
+      const saveSettingsBtn = $('saveSettingsBtn');
+      if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', () => {
+          document.querySelectorAll('.settings-card[data-macro]').forEach(card => {
+            const key = card.getAttribute('data-macro');
+            settings[key] = {
+              goal: parseFloat(card.querySelector('.s-goal').value) || 0,
+              min: parseFloat(card.querySelector('.s-min').value) || 0,
+              max: parseFloat(card.querySelector('.s-max').value) || 0,
+            };
+          });
+          saveSettings(settings);
+          toast('Goals saved');
+          renderAll();
         });
-        saveSettings(settings);
-        toast('Goals saved');
-        renderAll();
-      });
+      }
 
-      const saveGHTokenBtn = document.getElementById('saveGHTokenBtn');
+      const saveGHTokenBtn = $('saveGHTokenBtn');
       if (saveGHTokenBtn) {
         saveGHTokenBtn.addEventListener('click', () => {
-          const val = document.getElementById('ghTokenInput').value.trim();
+          const val = $('ghTokenInput').value.trim();
           if (val) {
             localStorage.setItem(GH_TOKEN_KEY, val);
             toast('GitHub Token saved');
@@ -429,10 +450,10 @@
         });
       }
 
-      const clearGHTokenBtn = document.getElementById('clearGHTokenBtn');
+      const clearGHTokenBtn = $('clearGHTokenBtn');
       if (clearGHTokenBtn) {
         clearGHTokenBtn.addEventListener('click', () => {
-          document.getElementById('ghTokenInput').value = '';
+          $('ghTokenInput').value = '';
           localStorage.removeItem(GH_TOKEN_KEY);
           toast('GitHub Token cleared');
         });
@@ -443,7 +464,7 @@
       function renderCharts() {
         if (typeof Chart === 'undefined') {
           ['calChart', 'macroChart'].forEach(id => {
-            const c = document.getElementById(id);
+            const c = $(id);
             if (c && c.parentElement && !c.parentElement.querySelector('.chart-fallback')) {
               const p = document.createElement('div');
               p.className = 'chart-fallback empty-state';
@@ -454,12 +475,14 @@
           });
           return;
         }
+        const calCanvas = $('calChart');
+        if (!calCanvas) return; // only on dashboard
         const dates = sortedDates(false).slice(-14);
         const labels = dates.map(d => d.slice(5));
         const calData = dates.map(d => entries[d].calories === '' ? null : entries[d].calories);
         const goalLine = dates.map(() => settings.calories.goal);
 
-        const ctx1 = document.getElementById('calChart').getContext('2d');
+        const ctx1 = calCanvas.getContext('2d');
         if (calChart) calChart.destroy();
         calChart = new Chart(ctx1, {
           type: 'line',
@@ -492,137 +515,147 @@
         const fatPct = totalAvgGrams ? Math.round((fatAvg / totalAvgGrams) * 100) : 0;
         const proteinPct = totalAvgGrams ? Math.round((proteinAvg / totalAvgGrams) * 100) : 0;
 
-        const ctx2 = document.getElementById('macroChart').getContext('2d');
-        if (macroChart) macroChart.destroy();
-        macroChart = new Chart(ctx2, {
-          type: 'doughnut',
-          data: {
-            labels: ['Carbs', 'Fat', 'Protein'],
-            datasets: [{
-              data: [carbAvg, fatAvg, proteinAvg],
-              backgroundColor: ['#2f6fa8', '#b3791d', '#b83f57'],
-              borderColor: '#ffffff',
-              borderWidth: 2
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: {
-                position: 'bottom',
-                labels: {
-                  color: '#756f66',
-                  font: { family: 'JetBrains Mono', size: 11 },
-                  padding: 12
-                }
-              },
-              tooltip: {
-                callbacks: {
-                  label: function (context) {
-                    const val = context.raw || 0;
-                    const pct = totalAvgGrams ? Math.round((val / totalAvgGrams) * 100) : 0;
-                    const macroNames = ['Carbs', 'Fat', 'Protein'];
-                    const name = macroNames[context.dataIndex] || context.label;
-                    return ` ${name}: ${val}g (${pct}%)`;
+        const macroCanvas = $('macroChart');
+        if (macroCanvas) {
+          const ctx2 = macroCanvas.getContext('2d');
+          if (macroChart) macroChart.destroy();
+          macroChart = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+              labels: ['Carbs', 'Fat', 'Protein'],
+              datasets: [{
+                data: [carbAvg, fatAvg, proteinAvg],
+                backgroundColor: ['#2f6fa8', '#b3791d', '#b83f57'],
+                borderColor: '#ffffff',
+                borderWidth: 2
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  labels: {
+                    color: '#756f66',
+                    font: { family: 'JetBrains Mono', size: 11 },
+                    padding: 12
+                  }
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function (context) {
+                      const val = context.raw || 0;
+                      const pct = totalAvgGrams ? Math.round((val / totalAvgGrams) * 100) : 0;
+                      const macroNames = ['Carbs', 'Fat', 'Protein'];
+                      const name = macroNames[context.dataIndex] || context.label;
+                      return ` ${name}: ${val}g (${pct}%)`;
+                    }
                   }
                 }
               }
-            }
-          },
-          plugins: [{
-            id: 'sliceLabelsAndCenterText',
-            afterDraw(chart) {
-              const { ctx, chartArea } = chart;
-              if (!chartArea) return;
-              const { top, bottom, left, right } = chartArea;
-              ctx.save();
+            },
+            plugins: [{
+              id: 'sliceLabelsAndCenterText',
+              afterDraw(chart) {
+                const { ctx, chartArea } = chart;
+                if (!chartArea) return;
+                const { top, bottom, left, right } = chartArea;
+                ctx.save();
 
-              // Draw slice labels (grams & percentage) directly on each slice
-              const meta = chart.getDatasetMeta(0);
-              if (meta && meta.data) {
-                meta.data.forEach((element, index) => {
-                  const val = chart.data.datasets[0].data[index];
-                  if (!val || val <= 0) return;
+                // Draw slice labels (grams & percentage) directly on each slice
+                const meta = chart.getDatasetMeta(0);
+                if (meta && meta.data) {
+                  meta.data.forEach((element, index) => {
+                    const val = chart.data.datasets[0].data[index];
+                    if (!val || val <= 0) return;
 
-                  const pct = totalAvgGrams ? Math.round((val / totalAvgGrams) * 100) : 0;
-                  const { startAngle, endAngle, outerRadius, innerRadius, x, y } = element;
-                  const angle = startAngle + (endAngle - startAngle) / 2;
-                  const middleRadius = innerRadius + (outerRadius - innerRadius) / 2;
+                    const pct = totalAvgGrams ? Math.round((val / totalAvgGrams) * 100) : 0;
+                    const { startAngle, endAngle, outerRadius, innerRadius, x, y } = element;
+                    const angle = startAngle + (endAngle - startAngle) / 2;
+                    const middleRadius = innerRadius + (outerRadius - innerRadius) / 2;
 
-                  const labelX = x + Math.cos(angle) * middleRadius;
-                  const labelY = y + Math.sin(angle) * middleRadius;
+                    const labelX = x + Math.cos(angle) * middleRadius;
+                    const labelY = y + Math.sin(angle) * middleRadius;
 
-                  ctx.save();
-                  ctx.textAlign = 'center';
-                  ctx.textBaseline = 'middle';
-                  ctx.fillStyle = '#ffffff';
-                  ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-                  ctx.shadowBlur = 3;
-                  ctx.font = '700 11px "JetBrains Mono", monospace';
-                  ctx.fillText(`${val}g (${pct}%)`, labelX, labelY);
-                  ctx.restore();
-                });
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+                    ctx.shadowBlur = 3;
+                    ctx.font = '700 11px "JetBrains Mono", monospace';
+                    ctx.fillText(`${val}g (${pct}%)`, labelX, labelY);
+                    ctx.restore();
+                  });
+                }
+
+                // Draw center total text inside doughnut hole
+                const centerX = (left + right) / 2;
+                const centerY = (top + bottom) / 2;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#201f1c';
+                ctx.font = '700 15px "JetBrains Mono", monospace';
+                ctx.fillText(`${totalAvgGrams}g`, centerX, centerY - 6);
+                ctx.fillStyle = '#756f66';
+                ctx.font = '500 10px "Inter", sans-serif';
+                ctx.fillText('avg / day', centerX, centerY + 10);
+                ctx.restore();
               }
-
-              // Draw center total text inside doughnut hole
-              const centerX = (left + right) / 2;
-              const centerY = (top + bottom) / 2;
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillStyle = '#201f1c';
-              ctx.font = '700 15px "JetBrains Mono", monospace';
-              ctx.fillText(`${totalAvgGrams}g`, centerX, centerY - 6);
-              ctx.fillStyle = '#756f66';
-              ctx.font = '500 10px "Inter", sans-serif';
-              ctx.fillText('avg / day', centerX, centerY + 10);
-              ctx.restore();
-            }
-          }]
-        });
+            }]
+          });
+        }
       }
 
       // ---------- CSV export / import ----------
-      document.getElementById('exportBtn').addEventListener('click', () => {
-        const csv = csvFromEntries(entries);
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `macro-tracker-${todayISO()}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast('Exported CSV');
-      });
+      const exportBtn = $('exportBtn');
+      if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+          const csv = csvFromEntries(entries);
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `macro-tracker-${todayISO()}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast('Exported CSV');
+        });
+      }
 
-      document.getElementById('connectCSVBtn').addEventListener('click', chooseCSVFile);
+      const connectCSVBtn = $('connectCSVBtn');
+      if (connectCSVBtn) connectCSVBtn.addEventListener('click', chooseCSVFile);
 
-      document.getElementById('importInput').addEventListener('change', function (ev) {
-        const file = ev.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          try {
-            const imported = entriesFromCSV(e.target.result);
-            const count = Object.keys(imported).length;
-            entries = Object.assign({}, entries, imported);
-            saveEntries(entries)
-              .then(() => {
-                toast(`Imported ${count} rows`);
-                renderAll();
-              })
-              .catch(err => {
-                console.error(err);
-                toast('Import failed');
-              });
-          } catch (err) {
-            toast('Import failed — check CSV format');
-          }
-          ev.target.value = '';
-        };
-        reader.readAsText(file);
-      });
+      const importInput = $('importInput');
+      if (importInput) {
+        importInput.addEventListener('change', function (ev) {
+          const file = ev.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            try {
+              const imported = entriesFromCSV(e.target.result);
+              const count = Object.keys(imported).length;
+              entries = Object.assign({}, entries, imported);
+              saveEntries(entries)
+                .then(() => {
+                  toast(`Imported ${count} rows`);
+                  renderAll();
+                })
+                .catch(err => {
+                  console.error(err);
+                  toast('Import failed');
+                });
+            } catch (err) {
+              toast('Import failed — check CSV format');
+            }
+            ev.target.value = '';
+          };
+          reader.readAsText(file);
+        });
+      }
 
       function renderAll() {
         renderRecent();
