@@ -593,8 +593,8 @@
     }
 
     .nav-link.active {
-      background: var(--carb);
-      border-color: var(--carb);
+      background: #4B4742;
+      border-color: #4B4742;
       color: var(--panel);
     }
 

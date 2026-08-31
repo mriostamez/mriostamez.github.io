@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-28T10:37:00.000Z",
+  "goals": {
+    "carbs":    { "goal": 180, "min": 175, "max": 185 },
+    "fat":      { "goal": 60,  "min": 55,  "max": 65  },
+    "protein":  { "goal": 185, "min": 180, "max": 190 },
+    "calories": { "goal": 2000,"min": 1900,"max": 2100 }
+  }
+}

@@ -4,6 +4,7 @@
       const GH_TOKEN_KEY = 'macroTracker.ghToken.v1';
       const GH_REPO = 'mriostamez/mriostamez.github.io';
       const CSV_FILE_PATH = 'data.csv';
+      const GOALS_FILE_PATH = 'goals.json';
 
       let csvFileHandle = null;
 
@@ -192,10 +193,91 @@
       function loadSettings() {
         try {
           const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-          return s ? Object.assign({}, DEFAULT_SETTINGS, s) : JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+          let base = s ? Object.assign({}, DEFAULT_SETTINGS, s) : JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+
+          // Load committed goals.json (source of truth across browsers/sessions)
+          const fileGoals = localStorage.getItem('macroTracker.goalsFile.v1');
+          if (!fileGoals) {
+            // Try a fresh fetch on first load after deploy
+            loadGoalsFile().then(fetched => {
+              if (fetched) {
+                let merged = Object.assign({}, DEFAULT_SETTINGS, fetched);
+                saveSettings(merged);
+                settings = merged;
+                renderAll();
+              }
+            }).catch(() => {});
+          } else {
+            try {
+              const parsed = JSON.parse(fileGoals);
+              if (parsed && parsed.goals) {
+                base = Object.assign({}, base, parsed.goals);
+              }
+            } catch (e) { }
+          }
+
+          return base;
         } catch (e) { return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); }
       }
       function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+
+      async function loadGoalsFile() {
+        try {
+          const res = await fetch(GOALS_FILE_PATH, { cache: 'no-store' });
+          if (!res.ok) return null;
+          const data = await res.json();
+          if (data && data.goals) return data.goals;
+        } catch (e) { }
+        return null;
+      }
+
+      async function saveGoalsFile(nextSettings) {
+        const goals = {};
+        for (const key of Object.keys(nextSettings)) {
+          goals[key] = { goal: nextSettings[key].goal, min: nextSettings[key].min, max: nextSettings[key].max };
+        }
+        const payload = { version: 1, updatedAt: new Date().toISOString(), goals };
+
+        // Best-effort: localStorage cache for offline / fast reload
+        try { localStorage.setItem('macroTracker.goalsFile.v1', JSON.stringify(payload)); } catch (e) { }
+
+        if (!localStorage.getItem(GH_TOKEN_KEY)) return;
+
+        try {
+          const url = `https://api.github.com/repos/${GH_REPO}/contents/${GOALS_FILE_PATH}`;
+          let sha = null;
+          try {
+            const getRes = await fetch(url, {
+              headers: { Authorization: `token ${localStorage.getItem(GH_TOKEN_KEY)}`, Accept: 'application/vnd.github.v3+json' }
+            });
+            if (getRes.ok) { const d = await getRes.json(); sha = d.sha; }
+          } catch (e) { }
+
+          const bodyData = {
+            message: 'Update goals.json via Daily Macro Tracker',
+            content: btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2)))),
+            sha: sha || undefined
+          };
+
+          const putRes = await fetch(url, {
+            method: 'PUT',
+            headers: {
+              Authorization: `token ${localStorage.getItem(GH_TOKEN_KEY)}`,
+              'Content-Type': 'application/json',
+              Accept: 'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify(bodyData)
+          });
+
+          if (putRes.ok) {
+            toast('Synced goals.json to GitHub');
+          } else {
+            console.warn('GitHub goals.json sync returned status:', putRes.status);
+          }
+        } catch (err) {
+          console.error('GitHub goals.json sync failed:', err);
+        }
+      }
 
       let entries = loadEntries();
       let settings = loadSettings();
@@ -420,7 +502,7 @@
 
       const saveSettingsBtn = $('saveSettingsBtn');
       if (saveSettingsBtn) {
-        saveSettingsBtn.addEventListener('click', () => {
+        saveSettingsBtn.addEventListener('click', async () => {
           document.querySelectorAll('.settings-card[data-macro]').forEach(card => {
             const key = card.getAttribute('data-macro');
             settings[key] = {
@@ -430,6 +512,7 @@
             };
           });
           saveSettings(settings);
+          await saveGoalsFile(settings);
           toast('Goals saved');
           renderAll();
         });
