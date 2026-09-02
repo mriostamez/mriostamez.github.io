@@ -176,10 +176,10 @@
       ];
 
       const DEFAULT_SETTINGS = {
-        carbs: { goal: 180, min: 175, max: 185 },
-        fat: { goal: 60, min: 55, max: 65 },
+        carbs: { goal: 160, min: 155, max: 165 },
+        fat: { goal: 55, min: 50, max: 60 },
         protein: { goal: 185, min: 180, max: 190 },
-        calories: { goal: 2000, min: 1900, max: 2100 },
+        calories: { goal: 1875, min: 1775, max: 1975 },
       };
 
       function loadEntries() {
@@ -308,6 +308,14 @@
       function statusFor(macroKey, value) {
         const r = settings[macroKey];
         if (!r || value === undefined || value === null || value === '') return null;
+        
+        if (macroKey !== 'calories') {
+          const diff = Math.abs(value - r.goal);
+          if (diff <= 5) return 'good';
+          if (diff <= 10) return 'warn';
+          return 'bad';
+        }
+
         if (value < r.min) return 'warn';
         if (value > r.max) return 'bad';
         return 'good';

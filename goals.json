@@ -13,14 +13,14 @@
       "max": 60
     },
     "protein": {
-      "goal": 180,
-      "min": 175,
-      "max": 185
+      "goal": 185,
+      "min": 180,
+      "max": 190
     },
     "calories": {
-      "goal": 2363,
-      "min": 1000,
-      "max": 2363
+      "goal": 1875,
+      "min": 1775,
+      "max": 1975
     }
   }
 }
