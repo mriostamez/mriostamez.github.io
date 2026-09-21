@@ -445,8 +445,27 @@
       function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
 
       async function loadGoalsFile() {
+        const token = localStorage.getItem(GH_TOKEN_KEY);
+        if (token) {
+          try {
+            const url = `https://api.github.com/repos/${GH_REPO}/contents/${GOALS_FILE_PATH}?t=${Date.now()}`;
+            const res = await fetch(url, {
+              headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json' },
+              cache: 'no-store'
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.content) {
+                const parsed = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
+                if (parsed && parsed.goals) return parsed.goals;
+              }
+            }
+          } catch (e) {
+            console.warn('Direct GitHub API fetch for goals.json failed, falling back:', e);
+          }
+        }
         try {
-          const res = await fetch(GOALS_FILE_PATH, { cache: 'no-store' });
+          const res = await fetch(`./${GOALS_FILE_PATH}?t=${Date.now()}`, { cache: 'no-store' });
           if (!res.ok) return null;
           const data = await res.json();
           if (data && data.goals) return data.goals;
@@ -687,20 +706,48 @@
       });
 
       // ---------- Settings ----------
+      function readSettingsFromDOM() {
+        const grid = $('settingsGrid');
+        if (!grid) return settings;
+        grid.querySelectorAll('.settings-card[data-macro]').forEach(card => {
+          const key = card.getAttribute('data-macro');
+          if (settings[key]) {
+            const goalEl = card.querySelector('.s-goal');
+            const minEl = card.querySelector('.s-min');
+            const maxEl = card.querySelector('.s-max');
+            const g = goalEl && goalEl.value !== '' ? parseFloat(goalEl.value) : settings[key].goal;
+            const mn = minEl && minEl.value !== '' ? parseFloat(minEl.value) : settings[key].min;
+            const mx = maxEl && maxEl.value !== '' ? parseFloat(maxEl.value) : settings[key].max;
+            settings[key] = {
+              goal: !isNaN(g) ? g : settings[key].goal,
+              min: !isNaN(mn) ? mn : settings[key].min,
+              max: !isNaN(mx) ? mx : settings[key].max,
+            };
+          }
+        });
+        saveSettings(settings);
+        return settings;
+      }
+
       function renderSettings() {
         const grid = $('settingsGrid');
         if (grid) {
-          grid.innerHTML = MACROS.map(m => {
-            const r = settings[m.key] || { goal: '', min: '', max: '' };
-            return `<div class="settings-card" data-macro="${m.key}">
-        <div class="macro-name" style="color:var(${m.color})">${m.label} (${m.unit})</div>
-        <div class="mini-fields">
-          <div class="field"><label>Goal</label><input type="number" class="s-goal" value="${r.goal}"></div>
-          <div class="field"><label>Min</label><input type="number" class="s-min" value="${r.min}"></div>
-          <div class="field"><label>Max</label><input type="number" class="s-max" value="${r.max}"></div>
-        </div>
-      </div>`;
-          }).join('');
+          const activeEl = document.activeElement;
+          const isTypingInGrid = activeEl && grid.contains(activeEl);
+
+          if (!isTypingInGrid) {
+            grid.innerHTML = MACROS.map(m => {
+              const r = settings[m.key] || { goal: '', min: '', max: '' };
+              return `<div class="settings-card" data-macro="${m.key}">
+          <div class="macro-name" style="color:var(${m.color})">${m.label} (${m.unit})</div>
+          <div class="mini-fields">
+            <div class="field"><label>Goal</label><input type="number" class="s-goal" value="${r.goal}"></div>
+            <div class="field"><label>Min</label><input type="number" class="s-min" value="${r.min}"></div>
+            <div class="field"><label>Max</label><input type="number" class="s-max" value="${r.max}"></div>
+          </div>
+        </div>`;
+            }).join('');
+          }
         }
 
         const tokenInput = $('ghTokenInput');
@@ -709,20 +756,24 @@
         }
       }
 
+      const settingsGrid = $('settingsGrid');
+      if (settingsGrid) {
+        settingsGrid.addEventListener('input', () => {
+          readSettingsFromDOM();
+        });
+      }
+
       const saveSettingsBtn = $('saveSettingsBtn');
       if (saveSettingsBtn) {
         saveSettingsBtn.addEventListener('click', async () => {
-          document.querySelectorAll('.settings-card[data-macro]').forEach(card => {
-            const key = card.getAttribute('data-macro');
-            settings[key] = {
-              goal: parseFloat(card.querySelector('.s-goal').value) || 0,
-              min: parseFloat(card.querySelector('.s-min').value) || 0,
-              max: parseFloat(card.querySelector('.s-max').value) || 0,
-            };
-          });
-          saveSettings(settings);
-          await saveGoalsFile(settings);
-          toast('Goals saved');
+          readSettingsFromDOM();
+          toast('Saving goals...');
+          const goalsRes = await saveGoalsFile(settings);
+          if (goalsRes && goalsRes.success) {
+            toast('Goals saved & synced to GitHub (goals.json)');
+          } else {
+            toast('Goals saved locally');
+          }
           renderAll();
         });
       }
@@ -733,16 +784,22 @@
           const val = $('ghTokenInput').value.trim();
           if (val) {
             localStorage.setItem(GH_TOKEN_KEY, val);
+            readSettingsFromDOM();
             toast('Testing GitHub token...');
             const verification = await verifyGitHubToken(val);
             if (verification.valid) {
-              toast(`Connected as @${verification.user}! Syncing data...`);
+              toast(`Connected as @${verification.user}! Syncing goals & data...`);
+              const goalsRes = await saveGoalsFile(settings);
               const syncRes = await syncToGitHub(csvFromEntries(entries));
-              await saveGoalsFile(settings);
-              if (syncRes && syncRes.success) {
+              if (syncRes && syncRes.success && goalsRes && goalsRes.success) {
                 clearTombstones();
-                toast('GitHub token verified and data.csv synced!');
+                toast('Token verified: goals.json & data.csv synced to GitHub!');
+              } else if (goalsRes && goalsRes.success) {
+                toast('goals.json synced to GitHub!');
+              } else {
+                toast('GitHub token verified and data synced!');
               }
+              renderAll();
             } else {
               toast(`GitHub token test failed: ${verification.error || 'Invalid token'}`);
             }
@@ -763,13 +820,20 @@
             if ($('ghTokenInput')) $('ghTokenInput').focus();
             return;
           }
-          toast('Syncing data & goals to GitHub...');
-          const csvRes = await syncToGitHub(csvFromEntries(entries));
+          readSettingsFromDOM();
+          toast('Syncing data.csv & goals.json to GitHub...');
           const goalsRes = await saveGoalsFile(settings);
-          if (csvRes && csvRes.success) {
+          const csvRes = await syncToGitHub(csvFromEntries(entries));
+          if (csvRes && csvRes.success && goalsRes && goalsRes.success) {
             clearTombstones();
-            toast('Successfully synced data.csv to GitHub!');
+            toast('Synced data.csv and goals.json to GitHub!');
+          } else if (goalsRes && goalsRes.success) {
+            toast('Synced goals.json to GitHub!');
+          } else if (csvRes && csvRes.success) {
+            clearTombstones();
+            toast('Synced data.csv to GitHub!');
           }
+          renderAll();
         });
       }
 
@@ -1008,6 +1072,15 @@
               }
             } catch (e) { }
           }
+
+          // Sync fresh goals from GitHub / remote if available
+          try {
+            const remoteGoals = await loadGoalsFile();
+            if (remoteGoals) {
+              settings = Object.assign({}, DEFAULT_SETTINGS, settings, remoteGoals);
+              saveSettings(settings);
+            }
+          } catch (e) { }
 
           entries = await restoreEntries();
           renderAll();
