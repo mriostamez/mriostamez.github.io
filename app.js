@@ -2,11 +2,143 @@
       const STORAGE_KEY = 'macroTracker.entries.v1';
       const SETTINGS_KEY = 'macroTracker.settings.v1';
       const GH_TOKEN_KEY = 'macroTracker.ghToken.v1';
+      const TOMBSTONES_KEY = 'macroTracker.tombstones.v1';
       const GH_REPO = 'mriostamez/mriostamez.github.io';
       const CSV_FILE_PATH = 'data.csv';
       const GOALS_FILE_PATH = 'goals.json';
 
       let csvFileHandle = null;
+
+      // ---------- Tombstone tracking for robust deletions ----------
+      function loadTombstones() {
+        try { return JSON.parse(localStorage.getItem(TOMBSTONES_KEY)) || []; } catch (e) { return []; }
+      }
+      function addTombstone(iso) {
+        try {
+          const stones = new Set(loadTombstones());
+          stones.add(iso);
+          localStorage.setItem(TOMBSTONES_KEY, JSON.stringify(Array.from(stones)));
+        } catch (e) { }
+      }
+      function removeTombstone(iso) {
+        try {
+          const stones = new Set(loadTombstones());
+          stones.delete(iso);
+          localStorage.setItem(TOMBSTONES_KEY, JSON.stringify(Array.from(stones)));
+        } catch (e) { }
+      }
+      function clearTombstones() {
+        try { localStorage.removeItem(TOMBSTONES_KEY); } catch (e) { }
+      }
+
+      // ---------- IndexedDB storage for File System handle ----------
+      const DB_NAME = 'MacroTrackerDB';
+      const STORE_NAME = 'handles';
+
+      function openDB() {
+        return new Promise((resolve, reject) => {
+          if (!('indexedDB' in window)) return reject(new Error('No indexedDB'));
+          const req = indexedDB.open(DB_NAME, 1);
+          req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async function storeFileHandle(handle) {
+        try {
+          const db = await openDB();
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          tx.objectStore(STORE_NAME).put(handle, 'csvHandle');
+        } catch (e) { }
+      }
+
+      async function getStoredFileHandle() {
+        try {
+          const db = await openDB();
+          return new Promise((resolve) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const req = tx.objectStore(STORE_NAME).get('csvHandle');
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+          });
+        } catch (e) { return null; }
+      }
+
+      // ---------- UI Sync Status Feedback ----------
+      function updateSyncStatusUI(state, message) {
+        document.querySelectorAll('#ghSyncStatus').forEach(el => {
+          el.className = `sync-status-pill ${state}`;
+          const textEl = el.querySelector('.sync-text');
+          const dot = el.querySelector('.sync-dot');
+          if (dot) {
+            if (state === 'syncing') dot.classList.add('pulse');
+            else dot.classList.remove('pulse');
+          }
+          if (textEl) {
+            if (state === 'connected') textEl.textContent = 'GitHub Synced';
+            else if (state === 'syncing') textEl.textContent = 'Syncing...';
+            else if (state === 'error') textEl.textContent = 'Sync Error';
+            else textEl.textContent = 'Local Only';
+          }
+        });
+
+        const msgEl = $('ghSyncMsg');
+        if (msgEl) {
+          msgEl.textContent = message || '';
+          msgEl.className = `sync-msg ${state === 'connected' ? 'good' : (state === 'error' ? 'bad' : 'warn')}`;
+        }
+      }
+
+      async function verifyGitHubToken(token) {
+        if (!token) {
+          updateSyncStatusUI('local', 'Local storage only — paste token to enable GitHub sync.');
+          return { valid: false, reason: 'empty' };
+        }
+        updateSyncStatusUI('syncing', 'Verifying GitHub token & permissions...');
+        try {
+          const userRes = await fetch('https://api.github.com/user', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/vnd.github.v3+json'
+            },
+            cache: 'no-store'
+          });
+          if (!userRes.ok) {
+            const err = userRes.status === 401 ? 'Invalid or expired token (401)' : `Auth error (${userRes.status})`;
+            updateSyncStatusUI('error', err);
+            return { valid: false, status: userRes.status, error: err };
+          }
+          const userData = await userRes.json();
+          const login = userData.login;
+
+          // Check repo push permission
+          const repoRes = await fetch(`https://api.github.com/repos/${GH_REPO}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/vnd.github.v3+json'
+            },
+            cache: 'no-store'
+          });
+          if (!repoRes.ok) {
+            const err = `Cannot access repo ${GH_REPO} (${repoRes.status}). Verify token repo permissions.`;
+            updateSyncStatusUI('error', err);
+            return { valid: false, status: repoRes.status, error: err };
+          }
+          const repoData = await repoRes.json();
+          if (repoData.permissions && !repoData.permissions.push) {
+            const err = 'Token lacks write (push) permission to this repository.';
+            updateSyncStatusUI('error', err);
+            return { valid: false, reason: 'no_push', error: err };
+          }
+
+          updateSyncStatusUI('connected', `Connected as @${login} — auto-sync active on main branch.`);
+          return { valid: true, user: login };
+        } catch (err) {
+          updateSyncStatusUI('error', `Network error: ${err.message}`);
+          return { valid: false, error: err.message };
+        }
+      }
 
       function csvFromEntries(sourceEntries) {
         const dates = Object.keys(sourceEntries).sort((a, b) => a.localeCompare(b));
@@ -45,49 +177,105 @@
         return result;
       }
 
-      async function syncToGitHub(csvContent) {
+      async function commitFileToGitHub(filePath, fileContentUtf8, commitMessage) {
         const token = localStorage.getItem(GH_TOKEN_KEY);
-        if (!token) return;
-
-        try {
-          const url = `https://api.github.com/repos/${GH_REPO}/contents/${CSV_FILE_PATH}`;
-          let sha = null;
-          try {
-            const getRes = await fetch(url, {
-              headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' }
-            });
-            if (getRes.ok) {
-              const getData = await getRes.json();
-              sha = getData.sha;
-            }
-          } catch (e) { }
-
-          const base64Content = btoa(unescape(encodeURIComponent(csvContent)));
-
-          const bodyData = {
-            message: 'Update data.csv via Daily Macro Tracker',
-            content: base64Content,
-            sha: sha || undefined
-          };
-
-          const putRes = await fetch(url, {
-            method: 'PUT',
-            headers: {
-              Authorization: `token ${token}`,
-              'Content-Type': 'application/json',
-              Accept: 'application/vnd.github.v3+json'
-            },
-            body: JSON.stringify(bodyData)
-          });
-
-          if (putRes.ok) {
-            toast('Synced data.csv to GitHub Repo');
-          } else {
-            console.warn('GitHub API sync returned status:', putRes.status);
-          }
-        } catch (err) {
-          console.error('GitHub API sync failed:', err);
+        if (!token) {
+          updateSyncStatusUI('local', 'Saved locally (no GitHub token configured).');
+          return { success: false, reason: 'no_token' };
         }
+
+        updateSyncStatusUI('syncing', `Pushing ${filePath} to GitHub...`);
+        const url = `https://api.github.com/repos/${GH_REPO}/contents/${filePath}`;
+        const maxRetries = 3;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            // 1. Fetch current file SHA with cache-busting
+            let sha = null;
+            try {
+              const getRes = await fetch(`${url}?t=${Date.now()}`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  Accept: 'application/vnd.github.v3+json'
+                },
+                cache: 'no-store'
+              });
+              if (getRes.ok) {
+                const getData = await getRes.json();
+                sha = getData.sha;
+              } else if (getRes.status === 401) {
+                updateSyncStatusUI('error', 'GitHub Token is invalid or expired (401).');
+                toast('GitHub Sync Failed: Invalid or expired token');
+                return { success: false, status: 401 };
+              } else if (getRes.status === 403) {
+                updateSyncStatusUI('error', 'Token lacks write permission to repo (403).');
+                toast('GitHub Sync Failed: Permission denied');
+                return { success: false, status: 403 };
+              }
+            } catch (err) {
+              console.warn(`Error fetching ${filePath} SHA:`, err);
+            }
+
+            // 2. Base64 encode file content safely
+            const base64Content = btoa(unescape(encodeURIComponent(fileContentUtf8)));
+
+            const bodyData = {
+              message: commitMessage || `Update ${filePath} via Daily Macro Tracker`,
+              content: base64Content,
+              sha: sha || undefined
+            };
+
+            // 3. Send PUT request
+            const putRes = await fetch(url, {
+              method: 'PUT',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/vnd.github.v3+json'
+              },
+              body: JSON.stringify(bodyData)
+            });
+
+            if (putRes.ok) {
+              updateSyncStatusUI('connected', `Synced ${filePath} to GitHub repository.`);
+              return { success: true };
+            }
+
+            // Handle 409 Conflict with auto-retry
+            if (putRes.status === 409) {
+              console.warn(`409 Conflict committing ${filePath}, attempt ${attempt}/${maxRetries}. Retrying with fresh SHA...`);
+              if (attempt < maxRetries) {
+                await new Promise(r => setTimeout(r, 500 * attempt));
+                continue;
+              }
+            }
+
+            const errorText = await putRes.text();
+            let errMsg = `GitHub API error (${putRes.status})`;
+            try {
+              const errJson = JSON.parse(errorText);
+              if (errJson.message) errMsg = errJson.message;
+            } catch (e) { }
+
+            updateSyncStatusUI('error', `GitHub sync failed: ${errMsg}`);
+            toast(`GitHub sync failed: ${errMsg}`);
+            return { success: false, status: putRes.status, error: errMsg };
+          } catch (err) {
+            console.error(`GitHub commit exception (${filePath}):`, err);
+            if (attempt === maxRetries) {
+              updateSyncStatusUI('error', `Network error: ${err.message}`);
+              toast(`GitHub sync error: ${err.message}`);
+              return { success: false, error: err.message };
+            }
+            await new Promise(r => setTimeout(r, 500 * attempt));
+          }
+        }
+
+        return { success: false, reason: 'retries_exhausted' };
+      }
+
+      async function syncToGitHub(csvContent) {
+        return await commitFileToGitHub(CSV_FILE_PATH, csvContent, 'Update data.csv via Daily Macro Tracker');
       }
 
       async function saveCSVSnapshot(sourceEntries) {
@@ -104,29 +292,62 @@
           }
         }
 
-        syncToGitHub(csv);
+        return await syncToGitHub(csv);
       }
 
       async function persistEntries(sourceEntries) {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sourceEntries)); } catch (e) { }
-        await saveCSVSnapshot(sourceEntries);
+        return await saveCSVSnapshot(sourceEntries);
       }
 
       async function restoreEntries() {
         const local = loadEntries();
-        try {
-          const res = await fetch(`./${CSV_FILE_PATH}?t=${Date.now()}`);
-          if (res.ok) {
-            const text = await res.text();
-            const repo = entriesFromCSV(text);
-            // Local edits win; repo fills in dates the local copy lacks.
-            // Prevents the committed CSV from wiping unsynced browser edits on reload.
-            const merged = Object.assign({}, repo, local);
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch (e) { }
-            return merged;
+        const tombstones = new Set(loadTombstones());
+        const token = localStorage.getItem(GH_TOKEN_KEY);
+        let repoCSV = null;
+
+        // If a GitHub token is configured, fetch directly from GitHub Contents API
+        // to bypass the 1-3 minute delay of GitHub Pages build & CDN cache!
+        if (token) {
+          try {
+            const url = `https://api.github.com/repos/${GH_REPO}/contents/${CSV_FILE_PATH}?t=${Date.now()}`;
+            const res = await fetch(url, {
+              headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json' },
+              cache: 'no-store'
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.content) {
+                repoCSV = decodeURIComponent(escape(atob(data.content.replace(/\s/g, ''))));
+              }
+            }
+          } catch (err) {
+            console.warn('Direct GitHub API fetch failed, falling back to static pages file:', err);
           }
-        } catch (err) {
-          console.warn('Failed to fetch data.csv from repo:', err);
+        }
+
+        // Fallback to static ./data.csv if GitHub API was not used or failed
+        if (!repoCSV) {
+          try {
+            const res = await fetch(`./${CSV_FILE_PATH}?t=${Date.now()}`, { cache: 'no-store' });
+            if (res.ok) {
+              repoCSV = await res.text();
+            }
+          } catch (err) {
+            console.warn('Failed to fetch data.csv from repo/pages:', err);
+          }
+        }
+
+        if (repoCSV) {
+          const repo = entriesFromCSV(repoCSV);
+          // Never resurrect dates that were explicitly deleted locally
+          tombstones.forEach(iso => {
+            delete repo[iso];
+          });
+          // Local edits win; repo fills in dates the local copy lacks
+          const merged = Object.assign({}, repo, local);
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch (e) { }
+          return merged;
         }
 
         return local;
@@ -144,6 +365,7 @@
               types: [{ description: 'CSV file', accept: { 'text/csv': ['.csv'] } }]
             });
             csvFileHandle = handle;
+            await storeFileHandle(handle);
             const file = await csvFileHandle.getFile();
             const text = await file.text();
             const loaded = entriesFromCSV(text);
@@ -157,6 +379,7 @@
               suggestedName: 'data.csv',
               types: [{ description: 'CSV file', accept: { 'text/csv': ['.csv'] } }]
             });
+            await storeFileHandle(csvFileHandle);
             await saveCSVSnapshot(entries);
           }
           toast('CSV persistence connected');
@@ -238,45 +461,10 @@
         }
         const payload = { version: 1, updatedAt: new Date().toISOString(), goals };
 
-        // Best-effort: localStorage cache for offline / fast reload
         try { localStorage.setItem('macroTracker.goalsFile.v1', JSON.stringify(payload)); } catch (e) { }
 
-        if (!localStorage.getItem(GH_TOKEN_KEY)) return;
-
-        try {
-          const url = `https://api.github.com/repos/${GH_REPO}/contents/${GOALS_FILE_PATH}`;
-          let sha = null;
-          try {
-            const getRes = await fetch(url, {
-              headers: { Authorization: `token ${localStorage.getItem(GH_TOKEN_KEY)}`, Accept: 'application/vnd.github.v3+json' }
-            });
-            if (getRes.ok) { const d = await getRes.json(); sha = d.sha; }
-          } catch (e) { }
-
-          const bodyData = {
-            message: 'Update goals.json via Daily Macro Tracker',
-            content: btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2)))),
-            sha: sha || undefined
-          };
-
-          const putRes = await fetch(url, {
-            method: 'PUT',
-            headers: {
-              Authorization: `token ${localStorage.getItem(GH_TOKEN_KEY)}`,
-              'Content-Type': 'application/json',
-              Accept: 'application/vnd.github.v3+json'
-            },
-            body: JSON.stringify(bodyData)
-          });
-
-          if (putRes.ok) {
-            toast('Synced goals.json to GitHub');
-          } else {
-            console.warn('GitHub goals.json sync returned status:', putRes.status);
-          }
-        } catch (err) {
-          console.error('GitHub goals.json sync failed:', err);
-        }
+        const jsonContent = JSON.stringify(payload, null, 2);
+        return await commitFileToGitHub(GOALS_FILE_PATH, jsonContent, 'Update goals.json via Daily Macro Tracker');
       }
 
       let entries = loadEntries();
@@ -387,9 +575,16 @@
           cal = estimateCalories(carb, fat, protein);
         }
         entries[iso] = { calories: cal ?? '', carbs: carb ?? '', fat: fat ?? '', protein: protein ?? '' };
+        removeTombstone(iso);
         saveEntries(entries)
-          .then(() => {
-            toast(`Saved ${fmtDisplayDate(iso)}`);
+          .then((syncRes) => {
+            if (syncRes && syncRes.success) {
+              toast(`Saved & synced ${fmtDisplayDate(iso)} to GitHub`);
+            } else if (syncRes && syncRes.reason === 'no_token') {
+              toast(`Saved ${fmtDisplayDate(iso)} locally (GitHub sync not set)`);
+            } else {
+              toast(`Saved ${fmtDisplayDate(iso)} locally`);
+            }
             renderAll();
           })
           .catch(err => {
@@ -468,9 +663,15 @@
           ev.stopPropagation();
           const iso = del.getAttribute('data-delete');
           delete entries[iso];
+          addTombstone(iso);
           saveEntries(entries)
-            .then(() => {
-              toast(`Deleted ${fmtDisplayDate(iso)}`);
+            .then((syncRes) => {
+              if (syncRes && syncRes.success) {
+                clearTombstones();
+                toast(`Deleted ${fmtDisplayDate(iso)} (synced to GitHub)`);
+              } else {
+                toast(`Deleted ${fmtDisplayDate(iso)} locally`);
+              }
               renderAll();
             })
             .catch(err => {
@@ -528,15 +729,46 @@
 
       const saveGHTokenBtn = $('saveGHTokenBtn');
       if (saveGHTokenBtn) {
-        saveGHTokenBtn.addEventListener('click', () => {
+        saveGHTokenBtn.addEventListener('click', async () => {
           const val = $('ghTokenInput').value.trim();
           if (val) {
             localStorage.setItem(GH_TOKEN_KEY, val);
-            toast('GitHub Token saved');
-            syncToGitHub(csvFromEntries(entries));
+            toast('Testing GitHub token...');
+            const verification = await verifyGitHubToken(val);
+            if (verification.valid) {
+              toast(`Connected as @${verification.user}! Syncing data...`);
+              const syncRes = await syncToGitHub(csvFromEntries(entries));
+              await saveGoalsFile(settings);
+              if (syncRes && syncRes.success) {
+                clearTombstones();
+                toast('GitHub token verified and data.csv synced!');
+              }
+            } else {
+              toast(`GitHub token test failed: ${verification.error || 'Invalid token'}`);
+            }
           } else {
             localStorage.removeItem(GH_TOKEN_KEY);
+            updateSyncStatusUI('local', 'Token removed (local storage only)');
             toast('GitHub Token cleared');
+          }
+        });
+      }
+
+      const syncNowBtn = $('syncNowBtn');
+      if (syncNowBtn) {
+        syncNowBtn.addEventListener('click', async () => {
+          const token = localStorage.getItem(GH_TOKEN_KEY);
+          if (!token) {
+            toast('Please enter and save a GitHub token first');
+            if ($('ghTokenInput')) $('ghTokenInput').focus();
+            return;
+          }
+          toast('Syncing data & goals to GitHub...');
+          const csvRes = await syncToGitHub(csvFromEntries(entries));
+          const goalsRes = await saveGoalsFile(settings);
+          if (csvRes && csvRes.success) {
+            clearTombstones();
+            toast('Successfully synced data.csv to GitHub!');
           }
         });
       }
@@ -544,8 +776,9 @@
       const clearGHTokenBtn = $('clearGHTokenBtn');
       if (clearGHTokenBtn) {
         clearGHTokenBtn.addEventListener('click', () => {
-          $('ghTokenInput').value = '';
+          if ($('ghTokenInput')) $('ghTokenInput').value = '';
           localStorage.removeItem(GH_TOKEN_KEY);
+          updateSyncStatusUI('local', 'Token cleared (local storage only)');
           toast('GitHub Token cleared');
         });
       }
@@ -757,6 +990,25 @@
 
       async function initPersistence() {
         try {
+          // Initialize token verification & live UI status
+          const token = localStorage.getItem(GH_TOKEN_KEY);
+          if (token) {
+            verifyGitHubToken(token);
+          } else {
+            updateSyncStatusUI('local', 'Local storage only — paste token in Settings to sync to GitHub');
+          }
+
+          // Restore local file handle from IndexedDB if available
+          const storedHandle = await getStoredFileHandle();
+          if (storedHandle) {
+            try {
+              const perm = await storedHandle.queryPermission({ mode: 'readwrite' });
+              if (perm === 'granted') {
+                csvFileHandle = storedHandle;
+              }
+            } catch (e) { }
+          }
+
           entries = await restoreEntries();
           renderAll();
         } catch (err) {

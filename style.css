@@ -544,8 +544,93 @@
     }
 
     .github-sync-card {
-      display: none;
+      display: block;
+      background: var(--panel-raised);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
     }
+
+    .sync-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .sync-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .sync-status-pill.connected {
+      border-color: rgba(47, 143, 95, 0.4);
+      background: rgba(47, 143, 95, 0.08);
+      color: var(--good);
+    }
+
+    .sync-status-pill.local {
+      border-color: rgba(179, 121, 29, 0.4);
+      background: rgba(179, 121, 29, 0.08);
+      color: var(--warn);
+    }
+
+    .sync-status-pill.error {
+      border-color: rgba(184, 63, 87, 0.4);
+      background: rgba(184, 63, 87, 0.08);
+      color: var(--bad);
+    }
+
+    .sync-status-pill.syncing {
+      border-color: rgba(47, 111, 168, 0.4);
+      background: rgba(47, 111, 168, 0.08);
+      color: var(--carb);
+    }
+
+    .sync-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      display: inline-block;
+    }
+
+    .sync-dot.pulse {
+      animation: pulseSync 1.2s infinite ease-in-out;
+    }
+
+    @keyframes pulseSync {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .sync-actions {
+      display: flex;
+      gap: 6px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .sync-msg {
+      margin-top: 8px;
+      font-size: 11.5px;
+      font-family: var(--mono);
+      min-height: 16px;
+    }
+
+    .sync-msg.good { color: var(--good); }
+    .sync-msg.warn { color: var(--warn); }
+    .sync-msg.bad { color: var(--bad); }
 
     .app-footer {
       max-width: 1080px;

@@ -35,19 +35,20 @@
       <div class="panel">
         <div class="settings-grid" id="settingsGrid"></div>
         <div class="settings-card github-sync-card" style="margin-top:16px;">
-          <div class="macro-name" style="color:var(--carb)">GitHub sync (optional)</div>
-          <p class="hint">Paste a GitHub token with <code>repo</code> scope to push edits back to the repo's
-            <code>data.csv</code>. Stored only in this browser's localStorage. Without it, changes save locally but
-            won't publish to the live site.
-          </p>
+          <div class="sync-header">
+            <div class="macro-name" style="color:var(--carb); margin:0;">GitHub Cloud Sync</div>
+            <div id="ghSyncStatus" class="sync-status-pill local"><span class="sync-dot"></span><span class="sync-text">Checking...</span></div>
+          </div>
+          <p class="hint">Connect a GitHub Personal Access Token (Classic with <code>repo</code> scope or Fine-Grained with <code>Contents: Read and write</code>) to auto-commit and persist <code>data.csv</code> and <code>goals.json</code> directly to GitHub.</p>
           <div class="mini-fields">
-            <div class="field" style="flex:3;"><input type="password" id="ghTokenInput" placeholder="ghp_..."
-                autocomplete="off"></div>
-            <div class="field" style="flex:1; display:flex; gap:6px; align-items:flex-end;">
-              <button id="saveGHTokenBtn" class="primary">Save token</button>
+            <div class="field" style="flex:3;"><input type="password" id="ghTokenInput" placeholder="Paste GitHub Token (ghp_... or github_pat_...)" autocomplete="off"></div>
+            <div class="field sync-actions" style="flex:1;">
+              <button id="saveGHTokenBtn" class="primary">Save &amp; Test</button>
+              <button id="syncNowBtn" type="button">Sync Now</button>
               <button id="clearGHTokenBtn" class="ghost">Clear</button>
             </div>
           </div>
+          <div id="ghSyncMsg" class="sync-msg"></div>
         </div>
         <div style="margin-top:16px;"><button class="primary" id="saveSettingsBtn" style="width:100%">Save
             goals</button></div>
@@ -124,7 +125,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <footer class="app-footer">v090326-1300</footer>
+  <footer class="app-footer">v092126-1040</footer>
 
   <script src="app.js"></script>
 </body>
